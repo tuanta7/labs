@@ -19,14 +19,18 @@ app.post("/verify", async (req, res) => {
       return res.status(400).json({ error: "Token is required" });
     }
 
+    const params = {
+      secret: SECRET_KEY,
+      response: token,
+    };
+
+    console.log(params);
+
     const response = await axios.post(
       "https://www.google.com/recaptcha/api/siteverify",
       null,
       {
-        params: {
-          secret: SECRET_KEY,
-          response: token,
-        },
+        params,
       }
     );
 

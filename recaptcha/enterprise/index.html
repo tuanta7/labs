@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document Title</title>
+    <script src="https://www.google.com/recaptcha/enterprise.js?render=6LdyGEEsAAAAAIzSTOItVzcAhsjyKkpaCBkoCbl6"></script>
+  </head>
+  <body>
+    <h1>Hello, World!</h1>
+    <button onclick="onClick(event)">Submit</button>
+    <script>
+      function onClick(e) {
+        e.preventDefault();
+        grecaptcha.enterprise.ready(async () => {
+          const token = await grecaptcha.enterprise
+            .execute("6LdyGEEsAAAAAIzSTOItVzcAhsjyKkpaCBkoCbl6", {
+              action: "submit",
+            })
+            .then(function (token) {
+              return fetch("http://localhost:8000/verify", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ token }),
+              });
+            })
+            .then(function (response) {
+              return response.json();
+            })
+            .then(function (data) {
+              console.log("Verification result:", data);
+              alert(
+                data.token_properties.valid
+                  ? "reCAPTCHA verified successfully!"
+                  : "reCAPTCHA verification failed"
+              );
+            })
+            .catch(function (error) {
+              console.error("Error:", error);
+              alert("Error verifying reCAPTCHA");
+            });
+        });
+        // IMPORTANT: The 'token' that results from execute is an encrypted response sent by
+        // reCAPTCHA to the end user's browser.
+        // This token must be validated by creating an assessment.
+        // See https://cloud.google.com/recaptcha/docs/create-assessment
+      }
+    </script>
+  </body>
+</html>
