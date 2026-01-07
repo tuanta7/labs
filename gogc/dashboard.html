@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Go GC Demo</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #eee;
+        }
+        h1 { color: #00d9ff; text-align: center; }
+        .container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .panel {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .panel h2 { color: #00d9ff; margin-top: 0; font-size: 1.2em; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .stat-item {
+            background: #0f3460;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-value { font-size: 2em; font-weight: bold; color: #00d9ff; }
+        .stat-label { font-size: 0.8em; color: #888; margin-top: 5px; }
+        .buttons { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin: 20px 0; }
+        button {
+            padding: 12px 24px;
+            font-size: 1em;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        button:active { transform: translateY(0); }
+        .btn-allocate { background: #e94560; color: white; }
+        .btn-release { background: #f39c12; color: white; }
+        .btn-gc { background: #00d9ff; color: #1a1a2e; }
+        .btn-auto { background: #27ae60; color: white; }
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85em;
+        }
+        .history-table th, .history-table td {
+            padding: 8px;
+            text-align: right;
+            border-bottom: 1px solid #0f3460;
+        }
+        .history-table th { color: #00d9ff; text-align: center; }
+        .history-table td:first-child { text-align: left; }
+        .history-container { max-height: 300px; overflow-y: auto; }
+        .cleaned { color: #27ae60; font-weight: bold; }
+        .log {
+            background: #0a0a15;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.85em;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .log-entry { margin: 5px 0; padding: 5px; border-left: 3px solid #00d9ff; padding-left: 10px; }
+        .full-width { grid-column: 1 / -1; }
+        .heap-bar {
+            height: 30px;
+            background: #0f3460;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .heap-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d9ff, #e94560);
+            transition: width 0.3s ease;
+        }
+        .auto-status { font-size: 0.8em; color: #888; margin-left: 10px; }
+        .auto-active { color: #27ae60; }
+    </style>
+</head>
+<body>
+<h1>🗑️ Go Garbage Collector Demo</h1>
+
+<div class="buttons">
+    <button class="btn-allocate" onclick="allocate()">➕ Allocate 10MB</button>
+    <button class="btn-release" onclick="release()">📦 Release References</button>
+    <button class="btn-gc" onclick="triggerGC()">🧹 Trigger GC</button>
+    <button class="btn-auto" onclick="toggleAuto()">🔄 Auto Demo</button>
+    <span class="auto-status" id="autoStatus">Auto: OFF</span>
+</div>
+
+<div class="container">
+    <div class="panel">
+        <h2>📊 Live Memory Stats</h2>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-value" id="heapAlloc">0</div>
+                <div class="stat-label">Heap Alloc (KB)</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="totalAlloc">0</div>
+                <div class="stat-label">Total Alloc (MB)</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="numGC">0</div>
+                <div class="stat-label">GC Cycles</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="garbageSize">0</div>
+                <div class="stat-label">Garbage Held (MB)</div>
+            </div>
+        </div>
+        <div class="heap-bar">
+            <div class="heap-fill" id="heapBar" style="width: 0%"></div>
+        </div>
+        <div style="text-align: center; font-size: 0.8em; color: #888;">Heap Usage</div>
+    </div>
+
+    <div class="panel">
+        <h2>📝 Activity Log</h2>
+        <div class="log" id="log"></div>
+    </div>
+
+    <div class="panel full-width">
+        <h2>📈 GC History</h2>
+        <div class="history-container">
+            <table class="history-table">
+                <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Before (KB)</th>
+                    <th>After (KB)</th>
+                    <th>Cleaned (KB)</th>
+                    <th>GC #</th>
+                </tr>
+                </thead>
+                <tbody id="historyBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    let autoInterval = null;
+    let maxHeap = 50000; // 50 MB for bar scaling
+
+    function log(msg, type = 'info') {
+        const logEl = document.getElementById('log');
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        entry.style.borderColor = type === 'gc' ? '#27ae60' : type === 'alloc' ? '#e94560' : '#00d9ff';
+        entry.textContent = new Date().toLocaleTimeString() + ' - ' + msg;
+        logEl.insertBefore(entry, logEl.firstChild);
+        if (logEl.children.length > 20) logEl.removeChild(logEl.lastChild);
+    }
+
+    async function fetchStats() {
+        try {
+            const res = await fetch('/api/stats');
+            const data = await res.json();
+            document.getElementById('heapAlloc').textContent = data.heap_alloc_kb.toLocaleString();
+            document.getElementById('totalAlloc').textContent = data.total_alloc_mb;
+            document.getElementById('numGC').textContent = data.num_gc;
+            document.getElementById('garbageSize').textContent = data.garbage_size_mb;
+
+            const pct = Math.min((data.heap_alloc_kb / maxHeap) * 100, 100);
+            document.getElementById('heapBar').style.width = pct + '%';
+        } catch (e) {
+            console.error('Failed to fetch stats:', e);
+        }
+    }
+
+    async function fetchHistory() {
+        try {
+            const res = await fetch('/api/history');
+            const data = await res.json();
+            const tbody = document.getElementById('historyBody');
+            tbody.innerHTML = '';
+
+            if (data) {
+                data.slice().reverse().forEach(item => {
+                    const cleanedKb = Math.round(item.cleaned / 1024);
+                    const beforeKb = Math.round(item.before_heap_alloc / 1024);
+                    const afterKb = Math.round(item.after_heap_alloc / 1024);
+                    tbody.innerHTML += '<tr>' +
+                        '<td>' + item.timestamp + '</td>' +
+                        '<td>' + beforeKb.toLocaleString() + '</td>' +
+                        '<td>' + afterKb.toLocaleString() + '</td>' +
+                        '<td class="cleaned">' + cleanedKb.toLocaleString() + '</td>' +
+                        '<td>' + item.num_gc + '</td>' +
+                        '</tr>';
+                });
+            }
+        } catch (e) {
+            console.error('Failed to fetch history:', e);
+        }
+    }
+
+    async function allocate() {
+        const res = await fetch('/api/allocate', { method: 'POST' });
+        const data = await res.json();
+        log('Allocated 10MB garbage. Heap: ' + data.heap_alloc_mb + ' MB', 'alloc');
+        fetchStats();
+    }
+
+    async function release() {
+        const res = await fetch('/api/release', { method: 'POST' });
+        const data = await res.json();
+        log('Released garbage references. Heap: ' + data.before_heap_mb + ' → ' + data.after_heap_mb + ' MB', 'info');
+        fetchStats();
+    }
+
+    async function triggerGC() {
+        const res = await fetch('/api/gc', { method: 'POST' });
+        const data = await res.json();
+        log('GC #' + data.num_gc + ': ' + data.before_heap_kb + ' KB → ' + data.after_heap_kb + ' KB (cleaned: ' + data.cleaned_kb + ' KB)', 'gc');
+        fetchStats();
+        fetchHistory();
+    }
+
+    function toggleAuto() {
+        const statusEl = document.getElementById('autoStatus');
+        if (autoInterval) {
+            clearInterval(autoInterval);
+            autoInterval = null;
+            statusEl.textContent = 'Auto: OFF';
+            statusEl.classList.remove('auto-active');
+            log('Auto demo stopped');
+        } else {
+            let step = 0;
+            autoInterval = setInterval(async () => {
+                step = (step + 1) % 4;
+                switch(step) {
+                    case 1: await allocate(); break;
+                    case 2: await allocate(); break;
+                    case 3: await release(); break;
+                    case 0: await triggerGC(); break;
+                }
+            }, 1500);
+            statusEl.textContent = 'Auto: ON';
+            statusEl.classList.add('auto-active');
+            log('Auto demo started (allocate → release → GC cycle)');
+        }
+    }
+
+    // Initial fetch and periodic updates
+    fetchStats();
+    fetchHistory();
+    setInterval(fetchStats, 1000);
+    setInterval(fetchHistory, 2000);
+</script>
+</body>
+</html>

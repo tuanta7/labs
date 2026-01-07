@@ -1,3 +1,3 @@
-# Google Services
+# Code Labs
 
-☁️ A collection of implementation examples and boilerplate for integrating Google Cloud APIs and Workspace services.
+🧪 A collection of code samples, prototyping, and experimental projects.
