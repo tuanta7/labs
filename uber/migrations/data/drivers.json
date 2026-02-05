@@ -1,0 +1,47 @@
+[
+  {
+    "_id": "1",
+    "name": "John Doe",
+    "phone": "+1234567890",
+    "email": "john.doe@example.com",
+    "rating": 4.8,
+    "score": 95.5,
+    "completedTrips": 150
+  },
+  {
+    "_id": "2",
+    "name": "Jane Smith",
+    "phone": "+1234567891",
+    "email": "jane.smith@example.com",
+    "rating": 4.9,
+    "score": 98.0,
+    "completedTrips": 200
+  },
+  {
+    "_id": "3",
+    "name": "Mike Johnson",
+    "phone": "+1234567892",
+    "email": "mike.johnson@example.com",
+    "rating": 4.5,
+    "score": 88.3,
+    "completedTrips": 75
+  },
+  {
+    "_id": "4",
+    "name": "Sarah Williams",
+    "phone": "+1234567893",
+    "email": "sarah.williams@example.com",
+    "rating": 5.0,
+    "score": 99.8,
+    "completedTrips": 320
+  },
+  {
+    "_id": "5",
+    "name": "David Brown",
+    "phone": "+1234567894",
+    "email": "david.brown@example.com",
+    "rating": 4.2,
+    "score": 82.1,
+    "completedTrips": 45
+  }
+]
