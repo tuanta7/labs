@@ -59,7 +59,7 @@ func (h *Handler) HandleWS(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		var location domain.DriverLocation
+		var location domain.DriverLocationMessage
 		err = json.Unmarshal(msg, &location)
 		if err != nil {
 			h.logger.Debug("invalid payload", zap.Error(err))

@@ -3,6 +3,7 @@ package driver
 import (
 	"net/http"
 
+	"github.com/tuanta7/k6noz/services/internal/domain"
 	"github.com/tuanta7/k6noz/services/pkg/zapx"
 	"go.uber.org/zap"
 )
@@ -43,4 +44,17 @@ func (h *Handler) GetDriverByID(w http.ResponseWriter, r *http.Request) {
 	_ = WriteJSON(w, http.StatusOK, driver)
 }
 
-func (h *Handler) CreateNewRating(w http.ResponseWriter, r *http.Request) {}
+func (h *Handler) CreateNewRating(w http.ResponseWriter, r *http.Request) {
+	rating := &domain.Rating{}
+	if err := ReadJSON(r, rating); err != nil {
+		h.logger.Error("failed to read rating input", zap.Error(err))
+		_ = ErrorJSON(w, ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "failed to read rating",
+			Details: map[string]any{
+				"error": err.Error(),
+			},
+		})
+		return
+	}
+}

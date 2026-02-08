@@ -21,7 +21,7 @@ func main() {
 	cfg, err := ingestion.LoadConfig()
 	slient.PanicOnErr(err)
 
-	logger, err := zapx.NewLogger()
+	logger, err := zapx.NewLogger(zap.DebugLevel)
 	slient.PanicOnErr(err)
 	defer slient.Close(logger)
 

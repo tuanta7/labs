@@ -2,15 +2,19 @@ package zapx
 
 import (
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type Logger struct {
 	*zap.Logger
 }
 
-func NewLogger() (*Logger, error) {
+func NewLogger(level ...zapcore.Level) (*Logger, error) {
+	level = append(level, zapcore.InfoLevel)
+
 	cfg := zap.NewProductionConfig()
 	cfg.Encoding = "json"
+	cfg.Level = zap.NewAtomicLevelAt(level[0])
 
 	zl, err := cfg.Build(
 		zap.AddCaller(),

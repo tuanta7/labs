@@ -32,10 +32,6 @@ func (s *Server) Run() error {
 }
 
 func (s *Server) Shutdown(ctx context.Context) error {
-	// Close all active WebSocket connections first
-	if err := s.handler.Shutdown(ctx); err != nil {
-		return err
-	}
 	return s.server.Shutdown(ctx)
 }
 

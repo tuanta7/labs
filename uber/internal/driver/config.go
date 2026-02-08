@@ -2,11 +2,11 @@ package driver
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
-	"github.com/labstack/gommon/log"
 )
 
 const ConfigPrefix = "DRIVER"
@@ -30,7 +30,7 @@ type MongoConfig struct {
 func LoadConfig(envFiles ...string) (*Config, error) {
 	var cfg Config
 	if err := godotenv.Load(envFiles...); err != nil {
-		log.Warnf("failed to load .env file: %v", err)
+		log.Printf("failed to load .env file: %v", err)
 	}
 
 	if err := envconfig.Process(ConfigPrefix, &cfg); err != nil {

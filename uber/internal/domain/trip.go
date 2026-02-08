@@ -6,3 +6,8 @@ type Trip struct {
 	PassengerID string      `json:"passengerId"`
 	Tracks      []*Location `json:"tracks"`
 }
+
+type TripConfirmationMessage struct {
+	PassengerID    string   `json:"passengerId"`
+	PickUpLocation Location `json:"pickUpLocation"`
+}

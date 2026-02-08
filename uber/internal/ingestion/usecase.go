@@ -21,7 +21,7 @@ func NewUseCase(logger *zapx.Logger, publisher *kafka.Publisher) *UseCase {
 	}
 }
 
-func (u *UseCase) PublishLocation(ctx context.Context, location *domain.DriverLocation) {
+func (u *UseCase) PublishLocation(ctx context.Context, location *domain.DriverLocationMessage) {
 	key := []byte(location.DriverID)
 
 	u.logger.Debug("publishing driver location",

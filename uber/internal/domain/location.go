@@ -7,3 +7,9 @@ type Location struct {
 	Longitude float64   `json:"longitude"`
 	Timestamp time.Time `json:"timestamp"`
 }
+
+type DriverLocationMessage struct {
+	TripID   string   `json:"tripId"`
+	DriverID string   `json:"driverId"`
+	Location Location `json:"location"`
+}

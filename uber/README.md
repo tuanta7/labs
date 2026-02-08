@@ -1,7 +1,5 @@
 # Monorepo for Location Services
 
-🚛 Location service demo with support for location tracking & push notifications.
-
 This repository will grow gradually to keep the codebase simple; early package splitting will be avoided whenever
 possible.
 
