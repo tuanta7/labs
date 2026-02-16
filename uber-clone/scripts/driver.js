@@ -1,4 +1,4 @@
-import http from "k6/http";
+import http from "uber-clone/http";
 import {check, sleep} from "k6";
 
 export const options = {

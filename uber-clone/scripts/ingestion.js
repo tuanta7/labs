@@ -1,6 +1,6 @@
-import ws from 'k6/ws';
+import ws from 'uber-clone/ws';
 import { check, sleep } from 'k6';
-import { Counter, Rate, Trend } from 'k6/metrics';
+import { Counter, Rate, Trend } from 'uber-clone/metrics';
 
 const messagesSent = new Counter('ws_messages_sent');
 const messagesInvalid = new Counter('ws_messages_invalid');

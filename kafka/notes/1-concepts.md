@@ -32,7 +32,7 @@ Topics are partitioned , meaning a topic is spread over a number of buckets loca
 - Events with the same event key (e.g., a customer or vehicle ID) are written to the same partition
 - A single consumer may safely consume from multiple partitions.
 
-![](../.imgs/topic.png)
+![](../../.imgs/topic.png)
 
 ### 1.3. Consumer Group
 
