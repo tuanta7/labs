@@ -1,1 +1,3 @@
-## Franz-go: A feature complete, pure Go library for Kafka
+# franz-go
+
+A feature complete, pure Go library for Kafka
