@@ -1,4 +1,4 @@
-package logger
+package main
 
 import (
 	"github.com/rs/zerolog"
