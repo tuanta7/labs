@@ -6,6 +6,6 @@ Reference: [Kafka Rebalancing Explained](https://www.confluent.io/learn/kafka-re
 
 Rebalancing is triggered by membership changes, session timeouts, and exceeding the maximum poll interval.
 
-## 2. KRaft (Kafka-Raft)
+## 2. KRaft
 
 In KRaft mode each Kafka server can be configured as a controller, a broker, or both using the `process.roles` property.
