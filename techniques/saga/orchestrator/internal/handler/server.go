@@ -1,4 +1,4 @@
-package main
+package handler
 
 import (
 	"context"
@@ -7,18 +7,20 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"orchestrator/internal/config"
+	"orchestrator/internal/saga"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type Server struct {
 	ch     *amqp.Channel
-	store  *SagaStore
+	store  *saga.Store
 	mux    *http.ServeMux
 	server *http.Server
 }
 
-func NewServer(ch *amqp.Channel, store *SagaStore) *Server {
+func NewServer(ch *amqp.Channel, store *saga.Store) *Server {
 	return &Server{
 		mux:   http.NewServeMux(),
 		ch:    ch,
@@ -26,27 +28,28 @@ func NewServer(ch *amqp.Channel, store *SagaStore) *Server {
 	}
 }
 
-func (s *Server) Shutdown(ctx context.Context) {
+func (sv *Server) Shutdown(ctx context.Context) {
 	log.Println("[orchestrator] shutting down...")
-	err := s.server.Shutdown(ctx)
+	err := sv.server.Shutdown(ctx)
 	if err != nil {
 		log.Println("[orchestrator] server shutdown: ", err)
 	}
 }
 
-func (s *Server) Start() {
-	s.mux.HandleFunc("POST /saga/start", func(w http.ResponseWriter, r *http.Request) {
+func (sv *Server) Start() {
+	sv.mux.HandleFunc("POST /saga/charging", func(w http.ResponseWriter, r *http.Request) {
 		var req ChargingRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, fmt.Sprintf("invalid request body: %v", err), http.StatusBadRequest)
 			return
 		}
+
 		if req.StationID == "" || req.UserID == "" || req.Amount <= 0 {
 			http.Error(w, "user_id, station_id, and a positive amount are required", http.StatusBadRequest)
 			return
 		}
 
-		saga, err := StartSaga(r.Context(), s.ch, s.store, req)
+		sg, err := sv.StartChargingSaga(r.Context(), req)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("failed to start saga: %v", err), http.StatusInternalServerError)
 			return
@@ -54,29 +57,29 @@ func (s *Server) Start() {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		_ = json.NewEncoder(w).Encode(saga)
+		_ = json.NewEncoder(w).Encode(sg)
 	})
 
-	s.mux.HandleFunc("GET /saga/{id}", func(w http.ResponseWriter, r *http.Request) {
+	sv.mux.HandleFunc("GET /saga/{id}", func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
-		saga, err := s.store.GetSaga(r.Context(), id)
+		sg, err := sv.store.GetSaga(r.Context(), id)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("saga not found: %v", err), http.StatusNotFound)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(saga)
+		_ = json.NewEncoder(w).Encode(sg)
 	})
 
-	addr := getEnv("HTTP_ADDR", ":8080")
-	s.server = &http.Server{
+	addr := config.GetEnv("HTTP_ADDR", ":8080")
+	sv.server = &http.Server{
 		Addr:    addr,
-		Handler: s.mux,
+		Handler: sv.mux,
 	}
 
 	log.Printf("[orchestrator] HTTP server listening on %s", addr)
-	if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	if err := sv.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("http server: %v", err)
 	}
 }

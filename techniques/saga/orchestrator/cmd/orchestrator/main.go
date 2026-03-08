@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"log"
+	"orchestrator/internal/config"
+	"orchestrator/internal/handler"
+	"orchestrator/internal/saga"
 	"os/signal"
 	"syscall"
 
@@ -20,7 +23,7 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	mongoURI := getEnv("MONGO_URI", defaultMongoURI)
+	mongoURI := config.GetEnv("MONGO_URI", defaultMongoURI)
 	mongoClient, err := mongo.Connect(options.Client().ApplyURI(mongoURI))
 	if err != nil {
 		log.Fatalf("connect to mongodb: %v", err)
@@ -31,9 +34,9 @@ func main() {
 		}
 	}()
 
-	store := NewSagaStore(mongoClient)
+	store := saga.NewStore(mongoClient)
 
-	conn, err := amqp.Dial(getEnv("RABBITMQ_URL", defaultRabbitMQURL))
+	conn, err := amqp.Dial(config.GetEnv("RABBITMQ_URL", defaultRabbitMQURL))
 	if err != nil {
 		log.Fatalf("connect to rabbitmq: %v", err)
 	}
@@ -45,19 +48,19 @@ func main() {
 	}
 	defer ch.Close()
 
-	if err = SetupTopology(ch); err != nil {
+	if err = handler.SetupTopology(ch); err != nil {
 		log.Fatalf("setup topology: %v", err)
 	}
 	log.Println("[orchestrator] RabbitMQ topology ready")
 
 	go func() {
-		if err := ConsumeResponses(ctx, ch, store); err != nil {
+		if err := handler.ConsumeResponses(ctx, ch, store); err != nil {
 			log.Printf("[orchestrator] consumer stopped: %v", err)
 			cancel()
 		}
 	}()
 
-	srv := NewServer(ch, store)
+	srv := handler.NewServer(ch, store)
 	go srv.Start()
 
 	<-ctx.Done()

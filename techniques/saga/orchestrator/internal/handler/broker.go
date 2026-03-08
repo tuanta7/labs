@@ -1,10 +1,11 @@
-package main
+package handler
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
 	"log"
+	"orchestrator/internal/saga"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -20,6 +21,13 @@ const (
 
 	PrefetchCount = 1
 )
+
+// StepToQueue maps a step to its RabbitMQ queue/routing key.
+var StepToQueue = map[saga.StepType]string{
+	saga.StepReserve:  QueueReservation,
+	saga.StepPayment:  QueuePayment,
+	saga.StepCharging: QueueCharging,
+}
 
 func SetupTopology(ch *amqp.Channel) error {
 	// Declare the commands exchange (topic) used by the orchestrator to publish commands.
@@ -53,8 +61,8 @@ func SetupTopology(ch *amqp.Channel) error {
 	return nil
 }
 
-// PublishCommand sends a SagaCommand to the appropriate service queue.
-func PublishCommand(ctx context.Context, ch *amqp.Channel, cmd SagaCommand) error {
+// PublishCommand sends a Command to the appropriate service queue.
+func PublishCommand(ctx context.Context, ch *amqp.Channel, cmd saga.Command) error {
 	routingKey, ok := StepToQueue[cmd.Step]
 	if !ok {
 		return fmt.Errorf("unknown step: %s", cmd.Step)
@@ -73,7 +81,7 @@ func PublishCommand(ctx context.Context, ch *amqp.Channel, cmd SagaCommand) erro
 }
 
 // ConsumeResponses listens to the response queue and drives the saga state machine.
-func ConsumeResponses(ctx context.Context, ch *amqp.Channel, store *SagaStore) error {
+func ConsumeResponses(ctx context.Context, ch *amqp.Channel, store *saga.Store) error {
 	// Set QoS: process one message at a time per consumer.
 	if err := ch.Qos(PrefetchCount, 0, false); err != nil {
 		return fmt.Errorf("set QoS: %w", err)
@@ -112,9 +120,9 @@ func ConsumeResponses(ctx context.Context, ch *amqp.Channel, store *SagaStore) e
 	}
 }
 
-// handleResponse processes a single SagaResponse delivery.
-func handleResponse(ctx context.Context, ch *amqp.Channel, store *SagaStore, d amqp.Delivery) error {
-	var resp SagaResponse
+// handleResponse processes a single Response delivery.
+func handleResponse(ctx context.Context, ch *amqp.Channel, store *saga.Store, d amqp.Delivery) error {
+	var resp saga.Response
 	if err := json.Unmarshal(d.Body, &resp); err != nil {
 		// Bad message format — ack to discard (no point retrying).
 		log.Printf("[orchestrator] invalid message, discarding: %v", err)
@@ -136,13 +144,13 @@ func handleResponse(ctx context.Context, ch *amqp.Channel, store *SagaStore, d a
 }
 
 // handleStepSuccess advances the saga to the next step or marks it as completed.
-func handleStepSuccess(ctx context.Context, ch *amqp.Channel, store *SagaStore, saga *Saga, resp SagaResponse, d amqp.Delivery) error {
+func handleStepSuccess(ctx context.Context, ch *amqp.Channel, store *saga.Store, s *saga.Saga, resp saga.Response, d amqp.Delivery) error {
 	// Mark current step as OK.
-	okStatus, exists := StepToOKStatus[resp.Step]
+	okStatus, exists := saga.StepToOKStatus[resp.Step]
 	if !exists {
 		return fmt.Errorf("unknown step: %s", resp.Step)
 	}
-	if err := store.UpdateStatus(ctx, saga.ID, okStatus, ""); err != nil {
+	if err := store.UpdateStatus(ctx, s.ID, okStatus, ""); err != nil {
 		return fmt.Errorf("update saga status: %w", err)
 	}
 
@@ -150,60 +158,60 @@ func handleStepSuccess(ctx context.Context, ch *amqp.Channel, store *SagaStore, 
 	nextStep, hasNext := nextSagaStep(resp.Step)
 	if !hasNext {
 		// All steps completed!
-		log.Printf("[orchestrator] saga %s COMPLETED", saga.ID)
+		log.Printf("[orchestrator] saga %s COMPLETED", s.ID)
 		return d.Ack(false)
 	}
 
 	// Transition to pending for the next step.
-	pendingStatus := StepToPendingStatus[nextStep]
-	if err := store.UpdateStatus(ctx, saga.ID, pendingStatus, ""); err != nil {
+	pendingStatus := saga.StepToPendingStatus[nextStep]
+	if err := store.UpdateStatus(ctx, s.ID, pendingStatus, ""); err != nil {
 		return fmt.Errorf("update saga to pending: %w", err)
 	}
 
 	// Publish the next command.
-	cmd := SagaCommand{
-		SagaID:    saga.ID,
+	cmd := saga.Command{
+		SagaID:    s.ID,
 		Step:      nextStep,
-		Action:    ActionExecute,
-		UserID:    saga.UserID,
-		StationID: saga.StationID,
-		Amount:    saga.Amount,
+		Action:    saga.ActionExecute,
+		UserID:    s.UserID,
+		StationID: s.StationID,
+		Amount:    s.Amount,
 	}
 	if err := PublishCommand(ctx, ch, cmd); err != nil {
 		return fmt.Errorf("publish next command: %w", err)
 	}
 
-	log.Printf("[orchestrator] saga %s: advanced to step %s", saga.ID, nextStep)
+	log.Printf("[orchestrator] saga %s: advanced to step %s", s.ID, nextStep)
 	return d.Ack(false)
 }
 
 // handleStepFailure initiates compensation for all previously completed steps.
-func handleStepFailure(ctx context.Context, ch *amqp.Channel, store *SagaStore, saga *Saga, resp SagaResponse, d amqp.Delivery) error {
-	log.Printf("[orchestrator] saga %s: step %s FAILED: %s — starting compensation", saga.ID, resp.Step, resp.Error)
+func handleStepFailure(ctx context.Context, ch *amqp.Channel, store *saga.Store, s *saga.Saga, resp saga.Response, d amqp.Delivery) error {
+	log.Printf("[orchestrator] saga %s: step %s FAILED: %s — starting compensation", s.ID, resp.Step, resp.Error)
 
-	if err := store.UpdateStatus(ctx, saga.ID, SagaCompensating, resp.Error); err != nil {
+	if err := store.UpdateStatus(ctx, s.ID, saga.StateCompensating, resp.Error); err != nil {
 		return fmt.Errorf("update saga to compensating: %w", err)
 	}
 
 	// Find all steps that completed before the failed step, and compensate in reverse.
 	failedIdx := stepIndex(resp.Step)
 	for i := failedIdx - 1; i >= 0; i-- {
-		step := SagaSteps[i]
-		cmd := SagaCommand{
-			SagaID:    saga.ID,
+		step := saga.SagaSteps[i]
+		cmd := saga.Command{
+			SagaID:    s.ID,
 			Step:      step,
-			Action:    ActionRollback,
-			UserID:    saga.UserID,
-			StationID: saga.StationID,
-			Amount:    saga.Amount,
+			Action:    saga.ActionRollback,
+			UserID:    s.UserID,
+			StationID: s.StationID,
+			Amount:    s.Amount,
 		}
 		if err := PublishCommand(ctx, ch, cmd); err != nil {
 			return fmt.Errorf("publish compensate command for step %s: %w", step, err)
 		}
-		log.Printf("[orchestrator] saga %s: published ROLLBACK for step %s", saga.ID, step)
+		log.Printf("[orchestrator] saga %s: published ROLLBACK for step %s", s.ID, step)
 	}
 
-	if err := store.UpdateStatus(ctx, saga.ID, SagaFailed, resp.Error); err != nil {
+	if err := store.UpdateStatus(ctx, s.ID, saga.StateFailed, resp.Error); err != nil {
 		return fmt.Errorf("update saga to failed: %w", err)
 	}
 
@@ -211,17 +219,17 @@ func handleStepFailure(ctx context.Context, ch *amqp.Channel, store *SagaStore, 
 }
 
 // nextSagaStep returns the step after the given step, if any.
-func nextSagaStep(current StepType) (StepType, bool) {
+func nextSagaStep(current saga.StepType) (saga.StepType, bool) {
 	idx := stepIndex(current)
-	if idx < 0 || idx >= len(SagaSteps)-1 {
+	if idx < 0 || idx >= len(saga.SagaSteps)-1 {
 		return "", false
 	}
-	return SagaSteps[idx+1], true
+	return saga.SagaSteps[idx+1], true
 }
 
 // stepIndex returns the index of a step in SagaSteps, or -1.
-func stepIndex(step StepType) int {
-	for i, s := range SagaSteps {
+func stepIndex(step saga.StepType) int {
+	for i, s := range saga.SagaSteps {
 		if s == step {
 			return i
 		}

@@ -1,4 +1,4 @@
-package main
+package saga
 
 import (
 	"context"
@@ -8,26 +8,25 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
-type SagaStore struct {
+type Store struct {
 	collection *mongo.Collection
 }
 
-func NewSagaStore(client *mongo.Client) *SagaStore {
-	return &SagaStore{
+func NewStore(client *mongo.Client) *Store {
+	return &Store{
 		collection: client.Database("saga_orchestrator").Collection("saga"),
 	}
 }
 
-// CreateSaga inserts a new saga into the database.
-func (s *SagaStore) CreateSaga(ctx context.Context, saga *Saga) error {
-	saga.CreatedAt = time.Now().UTC()
-	saga.UpdatedAt = saga.CreatedAt
+func (s *Store) CreateSaga(ctx context.Context, data *Saga) error {
+	data.CreatedAt = time.Now().UTC()
+	data.UpdatedAt = data.CreatedAt
 
-	_, err := s.collection.InsertOne(ctx, saga)
+	_, err := s.collection.InsertOne(ctx, data)
 	return err
 }
 
-func (s *SagaStore) GetSaga(ctx context.Context, id string) (*Saga, error) {
+func (s *Store) GetSaga(ctx context.Context, id string) (*Saga, error) {
 	var saga Saga
 	err := s.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&saga)
 	if err != nil {
@@ -37,7 +36,7 @@ func (s *SagaStore) GetSaga(ctx context.Context, id string) (*Saga, error) {
 	return &saga, nil
 }
 
-func (s *SagaStore) UpdateStatus(ctx context.Context, id string, status SagaState, errMsg string) error {
+func (s *Store) UpdateStatus(ctx context.Context, id string, status State, errMsg string) error {
 	update := bson.M{
 		"$set": bson.M{
 			"status":     status,

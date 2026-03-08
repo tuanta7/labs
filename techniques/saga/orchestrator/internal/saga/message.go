@@ -1,4 +1,4 @@
-package main
+package saga
 
 type ActionType string
 
@@ -15,7 +15,7 @@ const (
 	StepCharging StepType = "CHARGING"
 )
 
-type SagaCommand struct {
+type Command struct {
 	SagaID    string     `json:"saga_id"`
 	Step      StepType   `json:"step"`
 	Action    ActionType `json:"action"`
@@ -24,7 +24,7 @@ type SagaCommand struct {
 	Amount    float64    `json:"amount"`
 }
 
-type SagaResponse struct {
+type Response struct {
 	SagaID  string   `json:"saga_id"`
 	Step    StepType `json:"step"`
 	Success bool     `json:"success"`
