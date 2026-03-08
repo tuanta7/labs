@@ -1,15 +1,47 @@
-# Routing
+# rabbitmq/amqp091-go
 
-Routing in AMQP 0-9-1 is based on the concept of **exchanges**, **queues**, and **bindings**. Producers publish messages to exchanges, and exchanges use bindings (with optional routing keys) to decide how to deliver messages to queues or other exchanges. Consumers then consume from queues.
+Reference: [Go Tutorials](https://github.com/rabbitmq/rabbitmq-tutorials/tree/main/go)
 
-## 1. Declaring
+The official AMQP 0-9-1 Go client is rabbitmq/amqp091-go, which is maintained by the RabbitMQ team. In this library, a message sent from publisher is called a **Publishing** and a message received to a consumer is called a **Delivery**.
+
+```sh
+go get github.com/rabbitmq/amqp091-go
+```
+
+A single connection is intended to last for the full lifetime of the process.
+
+```go
+conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+if err != nil {
+    panic(err)
+}
+defer conn.Close()
+```
+
+Channels are created per logical task (publisher, consumer group, etc.) and are not thread‑safe.
+
+```go
+ch, err := conn.Channel()
+if err != nil {
+    panic(err)
+}
+defer ch.Close()
+```
+
+## 1. Routing
+
+Routing in AMQP 0-9-1 is based on the concept of exchange, queues, and bindings.
+
+- Producers publish messages to exchanges.
+- Exchanges use bindings (with optional routing keys) to decide how to deliver messages to queues or other exchanges.
+- Consumers then consume from queues.
 
 Queues and exchanges must exist before they can be used. Declaring them in application code is a common approach, but not mandatory if a system-level setup step already created them.
 
 - Declaring a queue/exchange that already exists with the same attributes is safe.
-- Declaring with conflicting attributes causes a channel-level error (code 406, _PRECONDITION_FAILED_).
+- Declaring with conflicting attributes causes a channel-level error (Code: 406, PRECONDITION_FAILED).
 
-### 1.1. Queue
+### 1.1. Queue Declaration
 
 ```go
 q, err := ch.QueueDeclare(
@@ -25,12 +57,12 @@ if err != nil {
 }
 ```
 
-### 1.2. Exchange
+### 1.2. Exchange Declaration
 
 Declaring an exchange explicitly defines the routing type and durability
 
-- Declaring an exchange with an empty string refers to the default exchange, a built-in direct exchange that routes based on queue name.
-- Well-known system exchanges like `amq.direct`, `amq.topic`, or `amq.fanout` are usually pre-declared and can be used without `ExchangeDeclare`.
+> [!NOTE]
+> Declaring an exchange with an empty string refers to the default exchange, a built-in direct exchange that routes based on queue name. Well-known system exchanges like `amq.direct`, `amq.topic`, or `amq.fanout` are usually pre-declared
 
 ```go
 err := ch.ExchangeDeclare(
@@ -47,16 +79,7 @@ if err != nil {
 }
 ```
 
-#### Exchange Types
-
-| Exchange type | Queue to be routed to                                        |
-| ------------- | ------------------------------------------------------------ |
-| direct        | exact `routingKey` match                                     |
-| fanout        | broadcast to all bound queues                                |
-| topic         | wildcard matching with `*` (single word) and `#`(multi-word) |
-| headers       | match based on message headers                               |
-
-## 2. Binding
+### 1.3. Binding
 
 A binding links a queue (or exchange) to an exchange and optionally filters messages via a routing key.
 
@@ -93,32 +116,23 @@ if err != nil {
 }
 ```
 
-## 3. Putting It Together
-
-A typical consumer setup may look like this
+## 2. Publishing
 
 ```go
-// Declare exchange
 err := ch.ExchangeDeclare("exchange-name", "direct", true, false, false, false, nil);
 if err != nil {
     panic(err)
 }
 
-// Declare queue
 q, err := ch.QueueDeclare("queue-name", true, false, false, false, nil)
 if err != nil {
     panic(err)
 }
 
-// Bind queue to exchange with routing key
 if err := ch.QueueBind(q.Name, "routing-key", "exchange-name", false, nil); err != nil {
     panic(err)
 }
-```
 
-And a publisher might only need
-
-```go
 err := ch.Publish(
     "exchange-name", // exchange: target exchange for the message
     "routing-key",   // routing key: determines message destination
