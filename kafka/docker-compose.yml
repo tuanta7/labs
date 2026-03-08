@@ -32,16 +32,29 @@ services:
     image: apache/kafka:latest
     container_name: kafka
     ports:
-      - "9092:9092"
-      - "9093:9093"
+      - "9092:9092" # Broker port
+      - "9093:9093" # KRaft controller port
     environment:
+      # Unique identifier for this Kafka node in the cluster
       KAFKA_NODE_ID: 1
+      # This node acts as both a broker (handles messages) and controller (manages cluster metadata) - KRaft mode
       KAFKA_PROCESS_ROLES: broker,controller
+      # Defines which node(s) participate in controller quorum voting (format: nodeId@host:port)
       KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      # Listeners the broker binds to:
+      #   EXTERNAL - for clients outside Docker (host machine) on port 9092
+      #   INTERNAL - for inter-container communication on port 19092
+      #   CONTROLLER - for KRaft controller communication on port 9093
       KAFKA_LISTENERS: EXTERNAL://:9092,INTERNAL://:19092,CONTROLLER://:9093
+      # Addresses advertised to clients for producing/consuming:
+      #   EXTERNAL - clients on the host connect via localhost:9092
+      #   INTERNAL - other containers connect via kafka:19092 (Docker DNS)
       KAFKA_ADVERTISED_LISTENERS: EXTERNAL://localhost:9092,INTERNAL://kafka:19092
+      # Which listener name is used for controller-to-controller communication
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      # Maps each listener name to its security protocol (all using PLAINTEXT = no encryption)
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: EXTERNAL:PLAINTEXT,INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      # Which listener brokers use to communicate with each other (replication, etc.)
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
     healthcheck:
       test: [ "CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092" ]
