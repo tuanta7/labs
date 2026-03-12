@@ -4,37 +4,46 @@ Reference: [Apache Kafka 4.1](https://kafka.apache.org/41/)
 
 Kafka is a distributed system consisting of servers and clients that communicate via a high-performance TCP network protocol.
 
+It solves the problem of high-throughput, low-latency, and scalable event streaming, while ensuring durability and the ability to replay data.
+
+- Traditional databases are optimized for transactions and queries
+- Traditional message queues are designed for task delivery
+
 ## 1. Concepts
 
 Reference: [Kafka Introduction](https://kafka.apache.org/41/getting-started/introduction/)
 
-An event records the fact that something happened in the world or in your business. It is also called record or message. When you read or write data to Kafka, you do this in the form of events.
+An event records (aka record or message) the fact that something happened in the world or in a business. Reading and writing data to Kafka occurs in the form of events. Conceptually, an event has a key, value, timestamp, and optional metadata headers. For example:
 
-Conceptually, an event has a key, value, timestamp, and optional metadata headers. For example:
+- **Event Key**: "Alice"
+- **Event Value**: "Made a payment of $200 to Bob"
+- **Event Timestamp**: "Jun. 25, 2020 at 2:06 p.m."
 
-- **Event key**: "Alice"
-- **Event value**: "Made a payment of $200 to Bob"
-- **Event timestamp**: "Jun. 25, 2020 at 2:06 p.m."
+### 1.1. Distributed Log
 
-### 1.1. Producers & Consumers
+### 1.2. Producers & Consumers
 
 Producers are those client applications that publish (write) events to Kafka and consumers are those that subscribe to (read and process) these events
 
-### 1.2. Topics
+### 1.3. Topics & Partitions
 
-Events are organized and durably stored in topics. Very simplified, a topic is similar to a folder in a filesystem, and the events are the files in that folder.
+Events are organized and durably stored in topics. A topic is similar to a folder in a filesystem, and the events are the files in that folder.
 
-- Events in a topic can be read as often as needed—unlike traditional messaging systems, events are not deleted after consumption.
-- Kafka’s performance is effectively constant with respect to data size, so storing data for a long time is perfectly fine.
+- Events in a topic can be read as often as needed; unlike traditional messaging systems, events are not deleted after consumption.
+- Kafka's performance is effectively constant with respect to data size, so storing data for a long time is perfectly fine.
 
-Topics are partitioned , meaning a topic is spread over a number of buckets located on different Kafka brokers.
+Topics are partitioned, meaning a topic is spread over a number of buckets located on different Kafka brokers.
 
 - Events with the same event key (e.g., a customer or vehicle ID) are written to the same partition
 - A single consumer may safely consume from multiple partitions.
+- Kafka does not support decreasing the number of partitions, only increasing.
+
+> [!CAUTION]
+> Kafka guarantees message ordering only within a single partition. Messages that need to remain in order must be routed to the same partition using the same key, ensuring that related events are managed correctly.
 
 ![](../../.imgs/topic.png)
 
-### 1.3. Consumer Group
+### 1.4. Consumer Group
 
 A consumer group is a set of consumers that collectively consume messages from one or more topics. The group is identified by a `group.id`.
 
