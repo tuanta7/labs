@@ -43,13 +43,13 @@ func NewServer(
 func (s *Server) Run() error {
 	monitor.InitHTTPMeter(s.meter)
 
-	s.mux.HandleFunc("POST /trips", monitor.Middleware(s.tracer, s.logger,
+	s.mux.Handle("POST /trips", monitor.Middleware(s.tracer, s.logger,
 		httpmiddleware.VerifyFakeToken(
 			s.handler.CreateTrip,
 		),
 	))
 
-	s.mux.HandleFunc("POST /trips/{id}", httpmiddleware.VerifyFakeToken(s.handler.AcceptTrip))
+	s.mux.Handle("POST /trips/{id}", httpmiddleware.VerifyFakeToken(s.handler.AcceptTrip))
 	return s.server.ListenAndServe()
 }
 

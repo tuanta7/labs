@@ -1,9 +1,6 @@
 package main
 
 import (
-	"context"
-	"fmt"
-
 	"github.com/tuanta7/monitor/internal/notification"
 	"github.com/tuanta7/monitor/pkg/graceful"
 	"github.com/tuanta7/monitor/pkg/monitor"
@@ -14,7 +11,7 @@ import (
 )
 
 func main() {
-	ctx := context.Background()
+	//ctx := context.Background()
 
 	cfg, err := notification.LoadConfig()
 	slient.PanicOnErr(err)
@@ -29,14 +26,14 @@ func main() {
 	slient.PanicOnErr(err)
 	defer slient.Close(grpcConn)
 
-	tracerProvider, err := monitor.NewTracerProvider(ctx, cfg.OTelServiceName, grpcConn)
-	slient.PanicOnErr(err, "failed to create tracer provider")
+	//tracerProvider, err := monitor.NewTracerProvider(ctx, cfg.OTelServiceName, grpcConn)
+	//slient.PanicOnErr(err, "failed to create tracer provider")
+	//
+	//meterProvider, err := monitor.NewMeterProvider(ctx, cfg.OTelServiceName, grpcConn)
+	//slient.PanicOnErr(err, "failed to create meter provider")
 
-	meterProvider, err := monitor.NewMeterProvider(ctx, cfg.OTelServiceName, grpcConn)
-	slient.PanicOnErr(err, "failed to create meter provider")
-
-	tracer := monitor.NewTracer(tracerProvider, cfg.OTelServiceName)
-	meter := monitor.NewMeter(meterProvider, cfg.OTelServiceName)
+	//tracer := monitor.NewTracer(tracerProvider, cfg.OTelServiceName)
+	//meter := monitor.NewMeter(meterProvider, cfg.OTelServiceName)
 
 	handler := notification.NewHandler()
 	server := notification.NewServer(cfg, handler)

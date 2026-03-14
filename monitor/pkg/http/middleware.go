@@ -20,8 +20,8 @@ type Profile struct {
 	Role Role   `json:"role"`
 }
 
-func VerifyFakeToken(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func VerifyFakeToken(next http.HandlerFunc) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
 			_ = ErrorJSON(w, ErrorResponse{
@@ -52,7 +52,7 @@ func VerifyFakeToken(next http.HandlerFunc) http.HandlerFunc {
 
 		ctx := context.WithValue(r.Context(), "profile", profile)
 		next.ServeHTTP(w, r.WithContext(ctx))
-	}
+	})
 }
 
 func extractFakeProfile(token string) (*Profile, error) {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/tuanta7/monitor/pkg/monitor"
+	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 	"go.uber.org/zap"
 )
 
@@ -36,8 +37,13 @@ func (u *UseCase) CreateTrip(ctx context.Context, trip *Trip) error {
 	trip.CreatedAt = time.Now().UTC()
 	trip.UpdatedAt = trip.CreatedAt
 
-	ctx, span := u.tracer.StartNewSpan(ctx, "create-trip")
+	ctx, span := u.tracer.StartNewSpan(ctx, "trip.create")
 	defer span.End()
+
+	span.SetAttributes(
+		semconv.DBMongoDBCollection(TripsCollection),
+		semconv.DBOperation("insert"),
+	)
 
 	err := u.repo.CreateTrip(ctx, trip)
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 	"go.uber.org/zap"
 )
 
@@ -28,47 +29,60 @@ type responseWriter struct {
 	StatusCode int
 }
 
+func newResponseWriter(w http.ResponseWriter) *responseWriter {
+	return &responseWriter{w, http.StatusOK}
+}
+
 func (w *responseWriter) WriteHeader(code int) {
 	w.StatusCode = code
 	w.ResponseWriter.WriteHeader(code)
 }
 
-func MetricMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		requestTotal.Add(r.Context(), 1)
-		rw := &responseWriter{ResponseWriter: w}
+func MetricMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rw := newResponseWriter(w)
 		next.ServeHTTP(rw, r)
 
+		requestTotal.Add(r.Context(), 1, metric.WithAttributes(
+			attribute.String("method", r.Method),
+			attribute.String("path", r.URL.Path),
+			attribute.Int("status_code", rw.StatusCode),
+		))
+
 		if rw.StatusCode >= 400 {
-			requestError.Add(r.Context(), 1)
+			requestError.Add(r.Context(), 1, metric.WithAttributes(
+				attribute.String("method", r.Method),
+				attribute.String("path", r.URL.Path),
+				attribute.Int("status_code", rw.StatusCode),
+			))
 		}
-	}
+	})
 }
 
-func TraceMiddleware(tracer *Tracer, next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func TraceMiddleware(tracer *Tracer, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx, span := tracer.StartNewSpan(r.Context(), "http.request")
+		defer span.End()
 
-		span.SetAttributes(attribute.KeyValue{
-			Key:   "http_method",
-			Value: attribute.StringValue(r.Method),
-		}, attribute.KeyValue{
-			Key:   "path",
-			Value: attribute.StringValue(r.URL.Path),
-		})
+		rw := newResponseWriter(w)
+		next.ServeHTTP(rw, r.WithContext(ctx))
 
-		next.ServeHTTP(w, r.WithContext(ctx))
-		span.End()
-	}
+		span.SetAttributes(
+			semconv.HTTPStatusCode(rw.StatusCode),
+			semconv.HTTPMethod(r.Method),
+			semconv.URLPath(r.URL.Path),
+		)
+	})
 }
 
-func Middleware(tracer *Tracer, logger *Logger, next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func Middleware(tracer *Tracer, logger *Logger, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		logger.Info("Request received",
 			zap.String("method", r.Method),
 			zap.String("path", r.URL.Path),
 		)
 
-		MetricMiddleware(TraceMiddleware(tracer, next))
-	}
+		handler := MetricMiddleware(TraceMiddleware(tracer, next))
+		handler.ServeHTTP(w, r)
+	})
 }

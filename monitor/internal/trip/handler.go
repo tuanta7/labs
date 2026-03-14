@@ -2,6 +2,7 @@ package trip
 
 import (
 	"net/http"
+	"time"
 
 	httpx "github.com/tuanta7/monitor/pkg/http"
 )
@@ -44,6 +45,7 @@ func (h *Handler) CreateTrip(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	time.Sleep(10 * time.Millisecond)
 	err = h.uc.CreateTrip(r.Context(), &Trip{
 		PassengerID:    profile.ID,
 		PickUpLocation: pickUpLocation,
@@ -55,6 +57,7 @@ func (h *Handler) CreateTrip(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	time.Sleep(10 * time.Millisecond)
 
 	_ = httpx.WriteJSON(w, http.StatusOK, httpx.JSON{})
 }
