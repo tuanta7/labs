@@ -1,0 +1,32 @@
+x-common: &common
+  restart: unless-stopped
+  deploy:
+    resources:
+      limits:
+        cpus: '0.25'
+        memory: 256M
+
+services:
+  nginx:
+    !!merge <<: *common
+    image: nginx:latest
+    container_name: monitor-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+
+  mongodb:
+    image: mongo:8.0-noble
+    container_name: monitor-mongodb
+    ports:
+      - "27017:27017"
+    restart: unless-stopped
+
+  redis:
+    image: redis:latest
+    container_name: monitor-redis
+    hostname: redis
+    ports:
+      - "6379:6379"
