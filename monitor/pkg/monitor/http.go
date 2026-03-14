@@ -79,14 +79,19 @@ func TraceMiddleware(tracer *Tracer, next http.Handler) http.Handler {
 	})
 }
 
-func Middleware(tracer *Tracer, logger *Logger, next http.Handler) http.Handler {
+func LogMiddleware(logger *Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		logger.Info("Request received",
 			zap.String("method", r.Method),
 			zap.String("path", r.URL.Path),
 		)
 
-		handler := MetricMiddleware(TraceMiddleware(tracer, next))
-		handler.ServeHTTP(w, r)
+		next.ServeHTTP(w, r)
+	})
+}
+
+func Middleware(tracer *Tracer, logger *Logger, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		LogMiddleware(logger, TraceMiddleware(tracer, MetricMiddleware(next))).ServeHTTP(w, r)
 	})
 }
