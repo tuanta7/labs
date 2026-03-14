@@ -7,12 +7,24 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/propagation"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 	"google.golang.org/grpc"
 )
+
+// InitPropagator sets the global propagator used for cross-service context propagation.
+// Call this once during service startup (before handling requests / making outbound calls).
+func InitPropagator() {
+	otel.SetTextMapPropagator(
+		propagation.NewCompositeTextMapPropagator(
+			propagation.TraceContext{},
+			propagation.Baggage{},
+		),
+	)
+}
 
 func NewMeterProvider(ctx context.Context, serviceName string, gc *grpc.ClientConn) (*sdkmetric.MeterProvider, error) {
 	res, err := resource.New(ctx,

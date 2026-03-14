@@ -12,10 +12,11 @@ import (
 const ConfigPrefix = "TRIP"
 
 type Config struct {
-	BindAddress      string      `envconfig:"BIND_ADDRESS" required:"true"`
-	OTelGRPCEndpoint string      `envconfig:"OTEL_GRPC_ENDPOINT" required:"true"`
-	OTelServiceName  string      `envconfig:"OTEL_SERVICE_NAME" required:"true" default:"trip-service"`
-	MongoConfig      MongoConfig `envconfig:"MONGO"`
+	BindAddress       string        `envconfig:"BIND_ADDRESS" required:"true"`
+	OTelGRPCEndpoint  string        `envconfig:"OTEL_GRPC_ENDPOINT" required:"true"`
+	OTelServiceName   string        `envconfig:"OTEL_SERVICE_NAME" required:"true" default:"trip-service"`
+	HTTPClientTimeout time.Duration `envconfig:"HTTP_CLIENT_TIMEOUT" default:"10s"`
+	MongoConfig       MongoConfig   `envconfig:"MONGO"`
 }
 
 type MongoConfig struct {

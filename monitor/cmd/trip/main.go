@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/tuanta7/monitor/internal/trip"
 	"github.com/tuanta7/monitor/pkg/graceful"
@@ -19,6 +20,8 @@ func main() {
 
 	cfg, err := trip.LoadConfig()
 	slient.PanicOnErr(err)
+
+	monitor.InitPropagator()
 
 	logger, err := monitor.NewLogger()
 	slient.PanicOnErr(err, "failed to create logger")
@@ -48,8 +51,12 @@ func main() {
 	slient.PanicOnErr(err)
 	defer slient.CloseWithContext(mongoClient.Disconnect, ctx)
 
+	httpClient := &http.Client{
+		Timeout: cfg.HTTPClientTimeout,
+	}
+
 	repository := trip.NewRepository(mongoClient)
-	business := trip.NewUseCase(repository, logger, meter, tracer)
+	business := trip.NewUseCase(repository, httpClient, logger, meter, tracer)
 	handler := trip.NewHandler(business)
 	server := trip.NewServer(cfg.BindAddress, handler, logger, meter, tracer)
 

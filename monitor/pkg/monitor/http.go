@@ -3,8 +3,10 @@ package monitor
 import (
 	"net/http"
 
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/propagation"
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 	"go.uber.org/zap"
 )
@@ -61,7 +63,9 @@ func MetricMiddleware(next http.Handler) http.Handler {
 
 func TraceMiddleware(tracer *Tracer, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx, span := tracer.StartNewSpan(r.Context(), "http.request")
+		// Continue trace from upstream by extracting the remote parent span context.
+		parentCtx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
+		ctx, span := tracer.StartNewSpan(parentCtx, "http.request")
 		defer span.End()
 
 		rw := newResponseWriter(w)

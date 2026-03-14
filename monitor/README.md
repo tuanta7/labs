@@ -2,7 +2,7 @@
 
 Tracing flows: 
 
-- Create Trip with Pickup Location → Find Nearest Drivers → Notification
+- Create Trip with Pickup Location → (Notification →) Find Nearest Drivers → Notification
 - Accept Trip → Notification
 
 ## Grafana k6

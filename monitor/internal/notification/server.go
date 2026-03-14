@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
 )
 
 type Server struct {
@@ -15,6 +16,9 @@ type Server struct {
 
 func NewServer(cfg *Config, handler *Handler) *Server {
 	mux := echo.New()
+	mux.Use(middleware.RequestLogger())
+	mux.Use(middleware.Recover())
+
 	return &Server{
 		handler: handler,
 		mux:     mux,
@@ -35,6 +39,6 @@ func (s *Server) Shutdown(ctx context.Context) error {
 }
 
 func (s *Server) registerRoutes() {
-	s.mux.GET("/metrics", nil)
-	s.mux.POST("/push", s.handler.SendPushNotification)
+	//s.mux.GET("/metrics", nil)
+	s.mux.POST("/notify", s.handler.SendPushNotification)
 }

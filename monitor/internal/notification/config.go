@@ -9,12 +9,12 @@ import (
 	"github.com/kelseyhightower/envconfig"
 )
 
-const ConfigPrefix = "INGESTION"
+const ConfigPrefix = "NOTIFICATION"
 
 type Config struct {
 	BindAddress      string `envconfig:"BIND_ADDRESS" required:"true"`
 	OTelGRPCEndpoint string `envconfig:"OTEL_GRPC_ENDPOINT" required:"true"`
-	OTelServiceName  string `envconfig:"OTEL_SERVICE_NAME" required:"true" default:"ingestion-service"`
+	OTelServiceName  string `envconfig:"OTEL_SERVICE_NAME" required:"true" default:"notification-service"`
 }
 
 func LoadConfig(envFiles ...string) (*Config, error) {

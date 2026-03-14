@@ -2,6 +2,7 @@ package trip
 
 import (
 	"context"
+	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -26,6 +27,7 @@ func NewRepository(client *mongo.Client) *Repository {
 }
 
 func (r *Repository) CreateTrip(ctx context.Context, trip *Trip) error {
+	time.Sleep(10 * time.Millisecond)
 	_, err := r.tripCollection.InsertOne(ctx, trip)
 	return err
 }
