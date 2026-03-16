@@ -1,4 +1,4 @@
-# Concurrency Control in PostgreSQL
+# Transaction Isolation (Implicit Locking)
 
 Reference: [PostgreSQL | Concurrency Control](https://www.postgresql.org/docs/current/mvcc.html)
 
@@ -6,8 +6,6 @@ Data consistency in PostgreSQL is maintained by using a multiversion model (Mult
 
 > [!NOTE]
 > A transaction is effectively treated as concurrent with another if the other transaction appears active in the snapshot.
-
-## 1. Transaction Isolation (Implicit Locking)
 
 A database transaction is a unit of work that is performed on a database and treated as a single atomic operation. It ensures that either all the changes within the transaction are committed to the database or none of them are. This guarantees data consistency and integrity.
 
@@ -32,7 +30,7 @@ The other three levels are defined in terms of phenomena, resulting from interac
 
 To set the transaction isolation level of a transaction (default to READ COMMITTED), use the command [SET TRANSACTION](https://www.postgresql.org/docs/current/sql-set-transaction.html). Note that internally only three distinct isolation levels are implemented (Read Uncommitted mode behaves like Read Committed)
 
-### 1.1. Read Committed Isolation Level
+## 1. Read Committed Isolation Level
 
 Read Committed mode starts each command with a new snapshot that includes all transactions committed up to that instant
 
@@ -55,7 +53,7 @@ COMMIT;
 SELECT balance FROM accounts WHERE acctnum = 123; -- Now returns 200
 ```
 
-### 1.2. Repeatable Read Isolation Level
+## 2. Repeatable Read Isolation Level
 
 This level is different from Read Committed in that a query in a repeatable read transaction sees a **STABLE** snapshot at the beginning of the transaction
 
@@ -85,7 +83,7 @@ ERROR:  could not serialize access due to concurrent update
 
 because a repeatable read transaction cannot modify or lock rows changed by other transactions after the repeatable read transaction began.
 
-### 1.3. Serializable Isolation Level
+## 3. Serializable Isolation Level
 
 This level emulates serial transaction execution for all committed transactions; as if transactions had been executed one after another, serially, rather than concurrently. It works exactly the same as Repeatable Read except that it also monitors for conditions which could make execution of a concurrent set of serializable transactions behave in a manner inconsistent with all possible serial executions of those transactions.
 
@@ -107,22 +105,3 @@ ERROR:  could not serialize access due to read/write dependencies among transact
 ```
 
 If these transactions were not serializable, and one transaction inserted/updated a row that would affect the other's calculation, a non-serializable outcome could occur.
-
-## 2. Explicit Locking
-
-Locking is the tool, and isolation is the goal it helps achieve, with higher isolation levels typically requiring more complex locking
-
-Most PostgreSQL commands automatically acquire locks of appropriate modes to ensure that referenced tables are not dropped or modified in incompatible ways while the command executes.
-
-There are majorly 2 types of locks:
-
-- **Shared Locks** (or read lock): Allow reading the row or the table that is being locked
-- **Exclusive Locks**: Lock the row or table entirely and let the transaction update the row in isolation.
-
-### 2.1. Table-Level Locks
-
-### 2.2. Row-Level Locks
-
-## 3. Optimistic & Pessimistic Locking
-
-Optimistic locking is primarily managed within the application layer, though it relies on database support for concurrency control.
