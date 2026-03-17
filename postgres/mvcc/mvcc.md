@@ -9,6 +9,17 @@ Data consistency in PostgreSQL is maintained by using a multiversion model (Mult
 
 A database transaction is a unit of work that is performed on a database and treated as a single atomic operation. It ensures that either all the changes within the transaction are committed to the database or none of them are. This guarantees data consistency and integrity.
 
+## 1. Snapshot & Tuple Visibility
+
+Reference: [System Columns](https://www.postgresql.org/docs/18/ddl-system-columns.html)
+
+Every table has several system columns that are implicitly defined by the system
+
+- **xmin**: The identity (transaction ID) of the inserting transaction for this row version.
+- **xmax**
+
+## 2. Isolation Level
+
 The SQL standard defines four levels of transaction isolation. The most strict is Serializable, which guarantee that any concurrent execution of a set of transactions will produce the same effect as running them one at a time in some order.
 
 The other three levels are defined in terms of phenomena, resulting from interaction between concurrent transactions, which must not occur at each level
@@ -28,9 +39,9 @@ The other three levels are defined in terms of phenomena, resulting from interac
 > [!NOTE]
 > Each transaction is sequential and isolated. Within the same transaction, PostgreSQL does not ignore prior changes from earlier statements. The second update/read of a row always sees the first update's result.
 
-To set the transaction isolation level of a transaction (default to READ COMMITTED), use the command [SET TRANSACTION](https://www.postgresql.org/docs/current/sql-set-transaction.html). Note that internally only three distinct isolation levels are implemented (Read Uncommitted mode behaves like Read Committed)
+To set the transaction isolation level of a transaction (default to READ COMMITTED), use the command [SET TRANSACTION](https://www.postgresql.org/docs/current/sql-set-transaction.html).
 
-## 1. Read Committed Isolation Level
+### 2.1. Read Committed Isolation Level
 
 Read Committed mode starts each command with a new snapshot that includes all transactions committed up to that instant
 
@@ -53,7 +64,7 @@ COMMIT;
 SELECT balance FROM accounts WHERE acctnum = 123; -- Now returns 200
 ```
 
-## 2. Repeatable Read Isolation Level
+### 2.2. Repeatable Read Isolation Level
 
 This level is different from Read Committed in that a query in a repeatable read transaction sees a **STABLE** snapshot at the beginning of the transaction
 
@@ -83,7 +94,7 @@ ERROR:  could not serialize access due to concurrent update
 
 because a repeatable read transaction cannot modify or lock rows changed by other transactions after the repeatable read transaction began.
 
-## 3. Serializable Isolation Level
+### 2.3. Serializable Isolation Level
 
 This level emulates serial transaction execution for all committed transactions; as if transactions had been executed one after another, serially, rather than concurrently. It works exactly the same as Repeatable Read except that it also monitors for conditions which could make execution of a concurrent set of serializable transactions behave in a manner inconsistent with all possible serial executions of those transactions.
 
