@@ -2,17 +2,15 @@ package kafka
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"time"
 
-	"github.com/rs/zerolog"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
+type MessageHandler func(ctx context.Context, msg *kgo.Record) error
+
 type Consumer struct {
 	client *kgo.Client
-	logger *zerolog.Logger
 }
 
 func NewConsumer(seeds []string, topic, group string) (*Consumer, error) {
@@ -34,7 +32,6 @@ func NewConsumer(seeds []string, topic, group string) (*Consumer, error) {
 
 	return &Consumer{
 		client: c,
-		logger: zerolog.DefaultContextLogger,
 	}, nil
 }
 
@@ -42,42 +39,22 @@ func (c *Consumer) Close() {
 	c.client.Close()
 }
 
-func (c *Consumer) Consume(ctx context.Context, handler func(key, value []byte) error) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-
+func (c *Consumer) Consume(ctx context.Context, handler MessageHandler) (err error) {
 	fetches := c.client.PollFetches(ctx)
-	if errs := fetches.Errors(); len(errs) > 0 {
-		for _, fetchErr := range errs {
-			if errors.Is(fetchErr.Err, context.Canceled) || errors.Is(fetchErr.Err, context.DeadlineExceeded) {
-				c.logger.Info().Err(fetchErr.Err).Msg("kafka fetch canceled")
-				return fetchErr.Err
-			}
 
-			c.logger.Error().Err(fetchErr.Err).Msg("kafka fetch failed")
+	fetches.EachRecord(func(r *kgo.Record) {
+		if err != nil {
+			return
 		}
 
-		return fmt.Errorf("kafka fetch failed: %w", errs[0].Err)
-	}
-
-	var handlerErr error
-	fetches.EachPartition(func(p kgo.FetchTopicPartition) {
-		for _, record := range p.Records {
-			if handlerErr != nil {
-				return
-			}
-
-			if err := handler(record.Key, record.Value); err != nil {
-				handlerErr = err
-				return
-			}
+		handlerErr := handler(ctx, r)
+		if err != nil {
+			// log / retry / DLQ
+			err = handlerErr
 		}
+
+		_ = c.client.CommitRecords(ctx, r)
 	})
 
-	if handlerErr != nil {
-		return handlerErr
-	}
-
-	return nil
+	return err
 }

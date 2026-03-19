@@ -2,14 +2,13 @@ package main
 
 import (
 	"context"
-	"errors"
 	"kafka-lab/internal/config"
 	"kafka-lab/internal/handler"
 	"kafka-lab/internal/kafka"
+	"sync"
+
 	"kafka-lab/internal/repository"
 	"kafka-lab/internal/usecase"
-	"os/signal"
-	"syscall"
 
 	"github.com/gocql/gocql"
 	zl "github.com/rs/zerolog/log"
@@ -30,27 +29,28 @@ func main() {
 	}
 	defer session.Close()
 
-	subscriber, err := kafka.NewConsumer(cfg.KafkaBrokers, cfg.KafkaTopicLocation, cfg.KafkaConsumerGroup)
+	consumer, err := kafka.NewConsumer(cfg.KafkaBrokers, cfg.KafkaTopicLocation, cfg.KafkaConsumerGroup)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to create kafka consumer")
 	}
-	defer subscriber.Close()
+	defer consumer.Close()
 
 	repo := repository.NewRepository(session)
-	uc := usecase.NewConsumerUseCase(subscriber, repo, cfg.KafkaTopicLocation, cfg.KafkaConsumerGroup, &logger)
-	h := handler.NewSubscribeHandler(uc, &logger)
+	uc := usecase.NewLocationUC(&logger, usecase.WithRepository(repo))
+	hdl := handler.NewConsumeHandler(consumer, uc, &logger)
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
+	var handlers []func(ctx context.Context) error
+	handlers = append(handlers, hdl.ConsumeLocationMessage)
 
-	logger.Info().
-		Strs("brokers", cfg.KafkaBrokers).
-		Str("topic", cfg.KafkaTopicLocation).
-		Str("group_id", cfg.KafkaConsumerGroup).
-		Msg("starting kafka subscriber")
-
-	err = h.ConsumeLocationTopic(ctx)
-	if err != nil && !errors.Is(err, context.Canceled) {
-		logger.Fatal().Err(err).Msg("subscriber stopped with error")
+	var wg sync.WaitGroup
+	for _, h := range handlers {
+		wg.Go(func() {
+			consumeErr := h(context.Background())
+			if consumeErr != nil {
+				logger.Fatal().Err(consumeErr).Msg("failed to consume message")
+			}
+		})
 	}
+
+	wg.Wait()
 }

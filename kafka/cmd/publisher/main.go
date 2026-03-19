@@ -30,11 +30,11 @@ func main() {
 		Str("topic", cfg.KafkaTopicLocation).
 		Msg("kafka producer initialized")
 
-	uc := usecase.NewPublisherUseCase(producer, cfg.KafkaTopicLocation, &logger)
-	handler := handler.NewPublishHandler(uc, &logger)
+	uc := usecase.NewLocationUC(&logger, usecase.WithPublisher(producer, cfg.KafkaTopicLocation))
+	hdl := handler.NewPublishHandler(uc, &logger)
 
 	app := fiber.New()
-	app.Get("/ws", websocket.New(handler.Handle))
+	app.Get("/ws", websocket.New(hdl.Handle))
 
 	err = app.Listen(":3000")
 	if err != nil {
