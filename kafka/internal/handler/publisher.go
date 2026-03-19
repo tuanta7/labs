@@ -12,11 +12,11 @@ import (
 )
 
 type PublishHandler struct {
-	uc     *usecase.LocationUseCase
+	uc     *usecase.PublisherUC
 	logger *zerolog.Logger
 }
 
-func NewPublishHandler(uc *usecase.LocationUseCase, logger *zerolog.Logger) *PublishHandler {
+func NewPublishHandler(uc *usecase.PublisherUC, logger *zerolog.Logger) *PublishHandler {
 	return &PublishHandler{
 		uc:     uc,
 		logger: logger,
@@ -43,7 +43,7 @@ func (h *PublishHandler) Handle(c *websocket.Conn) {
 			Msg("received location from websocket")
 
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		h.uc.ProduceLocation(ctx, &location)
+		h.uc.PublishLocationMessage(ctx, &location)
 		cancel()
 	}
 }

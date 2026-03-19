@@ -7,28 +7,28 @@ import (
 	"github.com/rs/zerolog"
 )
 
-type LocationProducer interface {
+type Publisher interface {
 	ProduceSync(ctx context.Context, topic string, key []byte, location *domain.Location) error
 }
 
-type LocationUseCase struct {
-	producer LocationProducer
-	topic    string
-	logger   *zerolog.Logger
+type PublisherUC struct {
+	publisher Publisher
+	topic     string
+	logger    *zerolog.Logger
 }
 
-func NewUseCase(producer LocationProducer, topic string, logger *zerolog.Logger) *LocationUseCase {
-	return &LocationUseCase{
-		producer: producer,
-		topic:    topic,
-		logger:   logger,
+func NewPublisherUseCase(producer Publisher, topic string, logger *zerolog.Logger) *PublisherUC {
+	return &PublisherUC{
+		publisher: producer,
+		topic:     topic,
+		logger:    logger,
 	}
 }
 
-func (p *LocationUseCase) ProduceLocation(ctx context.Context, location *domain.Location) {
+func (p *PublisherUC) PublishLocationMessage(ctx context.Context, location *domain.Location) {
 	key := []byte(location.UserID)
 
-	if err := p.producer.ProduceSync(ctx, p.topic, key, location); err != nil {
+	if err := p.publisher.ProduceSync(ctx, p.topic, key, location); err != nil {
 		p.logger.Error().
 			Err(err).
 			Str("location_id", location.ID).

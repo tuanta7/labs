@@ -4,8 +4,6 @@ services:
     container_name: postgres
     ports:
       - "5432:5432"
-    volumes:
-      - ./data/postgres:/var/lib/postgresql/data
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
@@ -16,8 +14,6 @@ services:
     container_name: saga-mongodb
     ports:
       - "27017:27017"
-    volumes:
-      - ./data/mongodb:/data/db
     restart: unless-stopped
 
   rabbitmq:
@@ -30,8 +26,6 @@ services:
       - RABBITMQ_DEFAULT_USER=rabbitmq
       - RABBITMQ_DEFAULT_PASS=password
       - RABBITMQ_DEFAULT_VHOST=/
-    volumes:
-      - ./data/rabbitmq:/var/lib/rabbitmq
     restart: unless-stopped
     healthcheck:
       test: [ "CMD", "rabbitmq-diagnostics", "ping" ]

@@ -10,12 +10,12 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
-type LocationKafkaProducer struct {
+type Producer struct {
 	client *kgo.Client
 	logger *zerolog.Logger
 }
 
-func NewProducer(seeds []string) (*LocationKafkaProducer, error) {
+func NewProducer(seeds []string) (*Producer, error) {
 	c, err := kgo.NewClient(
 		kgo.SeedBrokers(seeds...),
 		kgo.AllowAutoTopicCreation(),
@@ -32,17 +32,17 @@ func NewProducer(seeds []string) (*LocationKafkaProducer, error) {
 		return nil, err
 	}
 
-	return &LocationKafkaProducer{
+	return &Producer{
 		client: c,
 		logger: zerolog.DefaultContextLogger,
 	}, nil
 }
 
-func (p *LocationKafkaProducer) Close() {
+func (p *Producer) Close() {
 	p.client.Close()
 }
 
-func (p *LocationKafkaProducer) ProduceSync(
+func (p *Producer) ProduceSync(
 	ctx context.Context,
 	topic string,
 	key []byte,

@@ -30,7 +30,7 @@ func main() {
 		Str("topic", cfg.KafkaTopicLocation).
 		Msg("kafka producer initialized")
 
-	uc := usecase.NewUseCase(producer, cfg.KafkaTopicLocation, &logger)
+	uc := usecase.NewPublisherUseCase(producer, cfg.KafkaTopicLocation, &logger)
 	handler := handler.NewPublishHandler(uc, &logger)
 
 	app := fiber.New()

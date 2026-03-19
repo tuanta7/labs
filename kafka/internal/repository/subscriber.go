@@ -15,17 +15,17 @@ var locationTable = table.New(table.Metadata{
 	SortKey: []string{"timestamp"},
 })
 
-type Repository struct {
+type LocationRepository struct {
 	scylla *gocql.Session
 }
 
-func NewRepository(scylla *gocql.Session) *Repository {
-	return &Repository{
+func NewRepository(scylla *gocql.Session) *LocationRepository {
+	return &LocationRepository{
 		scylla: scylla,
 	}
 }
 
-func (r *Repository) SaveLocation(ctx context.Context, location *domain.Location) error {
+func (r *LocationRepository) SaveLocation(ctx context.Context, location *domain.Location) error {
 	q := r.scylla.Query(locationTable.Insert()).Bind(location)
 	if err := q.Exec(); err != nil {
 		return err
@@ -34,6 +34,6 @@ func (r *Repository) SaveLocation(ctx context.Context, location *domain.Location
 	return nil
 }
 
-func (r *Repository) GetLatestLocation(userID string) (*domain.Location, error) {
+func (r *LocationRepository) GetLatestLocation(userID string) (*domain.Location, error) {
 	return nil, nil
 }
