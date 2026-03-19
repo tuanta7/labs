@@ -40,12 +40,14 @@ Topics are partitioned, meaning a topic is spread over a number of buckets locat
 
 > [!CAUTION]
 > Kafka guarantees message ordering only within a single partition. Messages that need to remain in order must be routed to the same partition using the same key, ensuring that related events are managed correctly.
+>  
+> Increasing  the number of partitions change the mapping between keys and partitions, which may break ordering guarantees.
 
 ![](../../.imgs/topic.png)
 
 ### 1.4. Consumer Group
 
-A consumer group is a set of consumers that collectively consume messages from one or more topics. The group is identified by a `group.id`.
+A consumer group is a set of consumers that collectively consume messages from one or more topics. The group is identified by an ID.
 
 - Within a group, each partition of a topic is assigned to exactly one consumer, ensuring no duplication within the group.
 - Multiple consumer groups can subscribe to the same topic independently, effectively enabling publish-subscribe semantics.
