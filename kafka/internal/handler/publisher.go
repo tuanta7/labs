@@ -1,8 +1,10 @@
-package main
+package handler
 
 import (
 	"context"
 	"encoding/json"
+	"kafka-lab/internal/domain"
+	"kafka-lab/internal/usecase"
 	"time"
 
 	"github.com/gofiber/contrib/v3/websocket"
@@ -10,11 +12,11 @@ import (
 )
 
 type PublishHandler struct {
-	uc     *LocationUseCase
+	uc     *usecase.LocationUseCase
 	logger *zerolog.Logger
 }
 
-func NewPublishHandler(uc *LocationUseCase, logger *zerolog.Logger) *PublishHandler {
+func NewPublishHandler(uc *usecase.LocationUseCase, logger *zerolog.Logger) *PublishHandler {
 	return &PublishHandler{
 		uc:     uc,
 		logger: logger,
@@ -29,7 +31,7 @@ func (h *PublishHandler) Handle(c *websocket.Conn) {
 			break
 		}
 
-		var location Location
+		var location domain.Location
 		if err = json.Unmarshal(msg, &location); err != nil {
 			h.logger.Error().Err(err).Msg("failed to unmarshal location data")
 			continue

@@ -1,8 +1,8 @@
-package main
+package repository
 
 import (
 	"context"
-	"kafka/publisher"
+	"kafka-lab/internal/domain"
 
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/v3/table"
@@ -25,7 +25,7 @@ func NewRepository(scylla *gocql.Session) *Repository {
 	}
 }
 
-func (r *Repository) SaveLocation(ctx context.Context, location *publisher.Location) error {
+func (r *Repository) SaveLocation(ctx context.Context, location *domain.Location) error {
 	q := r.scylla.Query(locationTable.Insert()).Bind(location)
 	if err := q.Exec(); err != nil {
 		return err
@@ -34,6 +34,6 @@ func (r *Repository) SaveLocation(ctx context.Context, location *publisher.Locat
 	return nil
 }
 
-func (r *Repository) GetLatestLocation(userID string) (*publisher.Location, error) {
+func (r *Repository) GetLatestLocation(userID string) (*domain.Location, error) {
 	return nil, nil
 }

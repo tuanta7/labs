@@ -1,15 +1,18 @@
-package main
+package kafka
 
 import (
 	"context"
 	"encoding/json"
+	"kafka-lab/internal/domain"
 	"time"
 
+	"github.com/rs/zerolog"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
 type LocationKafkaProducer struct {
 	client *kgo.Client
+	logger *zerolog.Logger
 }
 
 func NewProducer(seeds []string) (*LocationKafkaProducer, error) {
@@ -31,6 +34,7 @@ func NewProducer(seeds []string) (*LocationKafkaProducer, error) {
 
 	return &LocationKafkaProducer{
 		client: c,
+		logger: zerolog.DefaultContextLogger,
 	}, nil
 }
 
@@ -42,17 +46,34 @@ func (p *LocationKafkaProducer) ProduceSync(
 	ctx context.Context,
 	topic string,
 	key []byte,
-	location *Location,
+	location *domain.Location,
 ) error {
 	value, err := json.Marshal(location)
 	if err != nil {
 		return err
 	}
 
-	return p.client.ProduceSync(ctx, &kgo.Record{
+	record, err := p.client.ProduceSync(ctx, &kgo.Record{
 		Topic:     topic,
 		Key:       key,
 		Value:     value,
 		Timestamp: time.Now().UTC(),
-	}).FirstErr()
+	}).First()
+
+	if err != nil {
+		p.logger.Error().
+			Err(err).
+			Str("topic", topic).
+			Str("key", string(key)).
+			Msg("failed to produce record")
+		return err
+	}
+
+	p.logger.Info().
+		Str("topic", topic).
+		Str("key", string(key)).
+		Int64("offset", record.Offset).
+		Msg("message produced to kafka successfully")
+
+	return nil
 }

@@ -1,13 +1,14 @@
-package main
+package usecase
 
 import (
 	"context"
+	"kafka-lab/internal/domain"
 
 	"github.com/rs/zerolog"
 )
 
 type LocationProducer interface {
-	ProduceSync(ctx context.Context, topic string, key []byte, location *Location) error
+	ProduceSync(ctx context.Context, topic string, key []byte, location *domain.Location) error
 }
 
 type LocationUseCase struct {
@@ -24,7 +25,7 @@ func NewUseCase(producer LocationProducer, topic string, logger *zerolog.Logger)
 	}
 }
 
-func (p *LocationUseCase) ProduceLocation(ctx context.Context, location *Location) {
+func (p *LocationUseCase) ProduceLocation(ctx context.Context, location *domain.Location) {
 	key := []byte(location.UserID)
 
 	if err := p.producer.ProduceSync(ctx, p.topic, key, location); err != nil {

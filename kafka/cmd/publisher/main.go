@@ -1,6 +1,11 @@
 package main
 
 import (
+	"kafka-lab/internal/config"
+	"kafka-lab/internal/handler"
+	"kafka-lab/internal/kafka"
+	"kafka-lab/internal/usecase"
+
 	"github.com/gofiber/contrib/v3/websocket"
 	"github.com/gofiber/fiber/v3"
 	zl "github.com/rs/zerolog/log"
@@ -9,12 +14,12 @@ import (
 func main() {
 	logger := zl.Logger.With().Timestamp().Logger()
 
-	cfg, err := LoadConfig()
+	cfg, err := config.LoadConfig()
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to load configuration")
 	}
 
-	producer, err := NewProducer(cfg.KafkaBrokers)
+	producer, err := kafka.NewProducer(cfg.KafkaBrokers)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to create kafka producer")
 	}
@@ -25,8 +30,8 @@ func main() {
 		Str("topic", cfg.KafkaTopicLocation).
 		Msg("kafka producer initialized")
 
-	uc := NewUseCase(producer, cfg.KafkaTopicLocation, &logger)
-	handler := NewPublishHandler(uc, &logger)
+	uc := usecase.NewUseCase(producer, cfg.KafkaTopicLocation, &logger)
+	handler := handler.NewPublishHandler(uc, &logger)
 
 	app := fiber.New()
 	app.Get("/ws", websocket.New(handler.Handle))

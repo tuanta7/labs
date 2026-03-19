@@ -1,13 +1,15 @@
 package main
 
 import (
+	"kafka-lab/internal/config"
+	"kafka-lab/internal/repository"
 	"log"
 
 	"github.com/gocql/gocql"
 )
 
 func main() {
-	cfg, err := LoadConfig()
+	cfg, err := config.LoadConfig()
 	if err != nil {
 		log.Fatalf("Error loading config: %s", err)
 	}
@@ -19,6 +21,6 @@ func main() {
 	}
 	defer session.Close()
 
-	repo := NewRepository(session)
+	repo := repository.NewRepository(session)
 	_ = repo
 }

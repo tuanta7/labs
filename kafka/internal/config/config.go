@@ -1,9 +1,8 @@
-package main
+package config
 
 import (
 	"context"
 
-	"github.com/joho/godotenv"
 	"github.com/sethvargo/go-envconfig"
 )
 
@@ -15,10 +14,6 @@ type Config struct {
 }
 
 func LoadConfig() (*Config, error) {
-	if err := godotenv.Load(); err != nil {
-		return nil, err
-	}
-
 	var cfg Config
 	if err := envconfig.Process(context.Background(), &cfg); err != nil {
 		return nil, err
