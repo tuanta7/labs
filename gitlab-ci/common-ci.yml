@@ -1,0 +1,84 @@
+stages:
+  - scan
+  - test
+  - dockerize
+  - deploy
+
+variables:
+  IMAGE_NAME: "required"
+  HELM_REPO: "required"
+  VALUES_FILE_PATH: "required"
+
+##########################################################################
+
+sonarqube-check:
+  stage: scan
+  image:
+    name: sonarsource/sonar-scanner-cli:latest
+    entrypoint: [""]
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  # Defines the location of the analysis task cache
+    GIT_DEPTH: "0"  # Tells git to fetch all the branches of the project, required by the analysis task
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
+  script:
+    - sonar-scanner -Dsonar.qualitygate.wait=true
+  allow_failure: false
+  rules:
+    - when: manual
+
+##########################################################################
+
+.docker-build: &docker-build
+  stage: dockerize
+  image: docker:24.0.5-dind
+  before_script:
+    - docker info
+    - echo "Building image $IMAGE_TAG"
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+  script:
+    - docker build -t "$IMAGE_TAG" .
+    - docker push "$IMAGE_TAG" 
+
+build-dev:
+  variables:
+    IMAGE_TAG: "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+  <<: *docker-build
+  script:
+    - docker build -t "$IMAGE_TAG" .
+    - docker push "$IMAGE_TAG" 
+
+build-prod:
+  variables:
+    IMAGE_TAG: "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+  <<: *docker-build
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v?\d+\.\d+\.\d+.*$/'
+
+##########################################################################
+
+deploy-dev:
+  stage: deploy
+  image: alpine:latest
+  variables:
+    IMAGE_TAG: "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+  before_script:
+    - echo "Deploying image $IMAGE_TAG to development environment"
+  script:
+    - echo "Deployed to development environment!"
+
+deploy-prod:
+  stage: deploy
+  image: alpine:latest
+  variables:
+    IMAGE_TAG: "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+  before_script:
+  - echo "Deploying image $IMAGE_TAG to development environment"
+  script:
+    - echo "Deployed to production environment!"
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v?\d+\.\d+\.\d+.*$/'
+
+  
