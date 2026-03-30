@@ -16,7 +16,11 @@ Reference: [System Columns](https://www.postgresql.org/docs/18/ddl-system-column
 Every table has several system columns that are implicitly defined by the system
 
 - **xmin**: The identity (transaction ID) of the inserting transaction for this row version.
-- **xmax**
+- **xmax**: The identity (transaction ID) of the deleting transaction, or zero for an undeleted row version.
+- **cmin**: The command identifier (starting at zero) within the inserting transaction.
+- **cmax**: The command identifier within the deleting transaction, or zero.
+
+A tuple is visible in a transaction’s snapshot if the inserting transaction is committed and its deleting transaction is not visible yet
 
 ## 2. Isolation Level
 
@@ -64,6 +68,8 @@ COMMIT;
 SELECT balance FROM accounts WHERE acctnum = 123; -- Now returns 200
 ```
 
+#### Tuple Visibility
+
 ### 2.2. Repeatable Read Isolation Level
 
 This level is different from Read Committed in that a query in a repeatable read transaction sees a **STABLE** snapshot at the beginning of the transaction
@@ -94,6 +100,8 @@ ERROR:  could not serialize access due to concurrent update
 
 because a repeatable read transaction cannot modify or lock rows changed by other transactions after the repeatable read transaction began.
 
+#### Tuple Visibility
+
 ### 2.3. Serializable Isolation Level
 
 This level emulates serial transaction execution for all committed transactions; as if transactions had been executed one after another, serially, rather than concurrently. It works exactly the same as Repeatable Read except that it also monitors for conditions which could make execution of a concurrent set of serializable transactions behave in a manner inconsistent with all possible serial executions of those transactions.
@@ -116,3 +124,5 @@ ERROR:  could not serialize access due to read/write dependencies among transact
 ```
 
 If these transactions were not serializable, and one transaction inserted/updated a row that would affect the other's calculation, a non-serializable outcome could occur.
+
+#### Tuple Visibility
