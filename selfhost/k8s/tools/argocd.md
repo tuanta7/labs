@@ -22,6 +22,12 @@ By default, Argo CD's API server is not exposed outside the cluster. For develop
 kubectl port-forward --address 0.0.0.0 svc/argocd-server -n argocd 8080:443
 ```
 
-## Kustomize & Helm
+## 1. Ingress Configuration
 
-## Vault
+## 2. Helm
+
+### 2.1. Kustomize
+
+### 2.2. Vault
+
+Reference: [Vault on Kubernetes](https://developer.hashicorp.com/vault/tutorials/kubernetes/kubernetes-raft-deployment-guide)
