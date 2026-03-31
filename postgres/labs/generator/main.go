@@ -17,6 +17,8 @@ func main() {
 		panic(err)
 	}
 
-	_ = db.AutoMigrate(&table.User{})
-	db.CreateInBatches(table.FakeUsers(1000), 1000)
+	_ = db.Migrator().DropTable(&table.User{}, &table.Order{})
+	_ = db.AutoMigrate(&table.User{}, &table.Order{})
+	db.CreateInBatches(table.FakeUsers(1000), 100)
+	db.CreateInBatches(table.FakeOrders(100), 100)
 }

@@ -1,10 +1,16 @@
 package table
 
-import "github.com/brianvoe/gofakeit/v7"
+import (
+	"time"
+
+	"github.com/brianvoe/gofakeit/v7"
+)
 
 type User struct {
-	ID   int `gorm:"primary_key"`
-	Name string
+	ID        int `gorm:"primary_key"`
+	Name      string
+	Status    string
+	CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP"`
 }
 
 func (u *User) TableName() string {
@@ -13,8 +19,13 @@ func (u *User) TableName() string {
 
 func FakeUser(id int) *User {
 	return &User{
-		ID:   id,
-		Name: gofakeit.Name(),
+		ID:     id,
+		Name:   gofakeit.Name(),
+		Status: gofakeit.RandomString([]string{"active", "inactive", "pending"}),
+		CreatedAt: gofakeit.DateRange(
+			time.Now().AddDate(-3, 0, 0),
+			time.Now().AddDate(-1, 0, 0),
+		),
 	}
 }
 
