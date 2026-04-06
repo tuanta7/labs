@@ -20,7 +20,17 @@ Every table has several system columns that are implicitly defined by the system
 - **cmin**: The command identifier (starting at zero) within the inserting transaction.
 - **cmax**: The command identifier within the deleting transaction, or zero.
 
-A tuple is visible in a transaction’s snapshot if the inserting transaction is committed and its deleting transaction is not visible yet
+A tuple is visible in a transaction's snapshot if the inserting transaction is committed and its deleting transaction is not visible yet. Note that visibility is determined by the snapshot; isolation levels determine how that snapshot is chosen and refreshed.
+
+| xmin (creator)                         | xmax (deleter)                         | Visibility condition    | Result    |
+| -------------------------------------- | -------------------------------------- | ----------------------- | --------- |
+| committed, visible in snapshot         | NULL                                   | valid version           | visible   |
+| committed, visible                     | committed, visible                     | deleted before snapshot | invisible |
+| committed, visible                     | committed, **not visible** (future tx) | delete not “seen” yet   | visible   |
+| committed, visible                     | in-progress                            | delete not finalized    | visible   |
+| in-progress                            | NULL                                   | creator not committed   | invisible |
+| aborted                                | NULL                                   | creator rolled back     | invisible |
+| committed, **not visible** (future tx) | NULL                                   | created after snapshot  | invisible |
 
 ## 2. Isolation Level
 
@@ -33,12 +43,12 @@ The other three levels are defined in terms of phenomena, resulting from interac
 - **Phantom Read**: A transaction re-executes a query returning a set of rows that satisfy a search condition and finds that the **SET** of rows satisfying the condition has changed due to another recently-committed transaction.
 - **Serialization Anomaly**: The result of successfully committing a group of transactions is inconsistent with **ALL** possible orderings of running those transactions one at a time.
 
-| Isolation Level  | Dirty Read             | Nonrepeatable Read | Phantom Read           | Serialization Anomaly | _Count_ |
-| ---------------- | ---------------------- | ------------------ | ---------------------- | --------------------- | ------- |
-| Read uncommitted | Allowed, but not in PG | Possible           | Possible               | Possible              | 3       |
-| Read committed   | Not possible           | Possible           | Possible               | Possible              | 3       |
-| Repeatable read  | Not possible           | Not possible       | Allowed, but not in PG | Possible              | 1       |
-| Serializable     | Not possible           | Not possible       | Not possible           | Not possible          | 0       |
+| Isolation Level  | Dirty Read             | Nonrepeatable Read | Phantom Read           | Serialization Anomaly |
+| ---------------- | ---------------------- | ------------------ | ---------------------- | --------------------- |
+| Read uncommitted | Allowed, but not in PG | ✅ Possible        | ✅ Possible            | ✅ Possible           |
+| Read committed   | Not possible           | ✅ Possible        | ✅ Possible            | ✅ Possible           |
+| Repeatable read  | Not possible           | Not possible       | Allowed, but not in PG | ✅ Possible           |
+| Serializable     | Not possible           | Not possible       | Not possible           | Not possible          |
 
 > [!NOTE]
 > Each transaction is sequential and isolated. Within the same transaction, PostgreSQL does not ignore prior changes from earlier statements. The second update/read of a row always sees the first update's result.
