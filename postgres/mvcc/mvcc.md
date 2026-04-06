@@ -20,17 +20,32 @@ Every table has several system columns that are implicitly defined by the system
 - **cmin**: The command identifier (starting at zero) within the inserting transaction.
 - **cmax**: The command identifier within the deleting transaction, or zero.
 
+A snapshot consists of:
+
+- **xmin**: The lowest active transaction ID ()
+- **xmax**: The nextXid (upper bound, the next transaction ID at the moment the snapshot is taken)
+- **xip[]**: The list of in-progress transaction IDs
+
 A tuple is visible in a transaction's snapshot if the inserting transaction is committed and its deleting transaction is not visible yet. Note that visibility is determined by the snapshot; isolation levels determine how that snapshot is chosen and refreshed.
 
-| xmin (creator)                         | xmax (deleter)                         | Visibility condition    | Result    |
-| -------------------------------------- | -------------------------------------- | ----------------------- | --------- |
-| committed, visible in snapshot         | NULL                                   | valid version           | visible   |
-| committed, visible                     | committed, visible                     | deleted before snapshot | invisible |
-| committed, visible                     | committed, **not visible** (future tx) | delete not “seen” yet   | visible   |
-| committed, visible                     | in-progress                            | delete not finalized    | visible   |
-| in-progress                            | NULL                                   | creator not committed   | invisible |
-| aborted                                | NULL                                   | creator rolled back     | invisible |
-| committed, **not visible** (future tx) | NULL                                   | created after snapshot  | invisible |
+| xmin (creator)                     | xmax (deleter)                     | Visibility condition    | Result     |
+| ---------------------------------- | ---------------------------------- | ----------------------- | ---------- |
+| in-progress                        | NULL                               | creator not committed   | invisible  |
+| aborted                            | NULL                               | creator rolled back     | invisible  |
+| committed, not visible (future tx) | NULL                               | created after snapshot  | invisible  |
+| committed, visible                 | committed, visible                 | deleted before snapshot | invisible  |
+| committed, visible in snapshot     | NULL                               | valid version           | ✅ visible |
+| committed, visible                 | in-progress                        | delete not finalized    | ✅ visible |
+| committed, visible                 | committed, not visible (future tx) | delete not "seen" yet   | ✅ visible |
+
+Given a transaction ID `txid`
+
+| State                    | How it is determined                                                          |
+| ------------------------ | ----------------------------------------------------------------------------- |
+| **In-progress**          | `txid` is in the snapshot's active transaction list                           |
+| **Committed**            | `txid` is marked committed in transaction log AND not in snapshot active list |
+| **Aborted**              | `txid` is marked aborted in transaction log                                   |
+| **Future (not visible)** | `txid ≥ snapshot.xmax`                                                        |
 
 ## 2. Isolation Level
 
@@ -39,8 +54,8 @@ The SQL standard defines four levels of transaction isolation. The most strict i
 The other three levels are defined in terms of phenomena, resulting from interaction between concurrent transactions, which must not occur at each level
 
 - **Dirty Read**: A transaction reads data written by a concurrent uncommitted transaction.
-- **Non-repeatable Read**: A transaction re-reads data it has previously read and finds that data **VALUE** has been modified by another recently-committed transaction.
-- **Phantom Read**: A transaction re-executes a query returning a set of rows that satisfy a search condition and finds that the **SET** of rows satisfying the condition has changed due to another recently-committed transaction.
+- **Non-repeatable Read** (Same row has different values): A transaction re-reads data it has previously read and finds that data **VALUE** has been modified by another recently-committed transaction.
+- **Phantom Read** (Different number of rows returned): A transaction re-executes a query returning a set of rows that satisfy a search condition and finds that the **SET** of rows satisfying the condition has changed due to another recently-committed transaction.
 - **Serialization Anomaly**: The result of successfully committing a group of transactions is inconsistent with **ALL** possible orderings of running those transactions one at a time.
 
 | Isolation Level  | Dirty Read             | Nonrepeatable Read | Phantom Read           | Serialization Anomaly |
