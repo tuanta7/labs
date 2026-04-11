@@ -3,7 +3,7 @@
 Reference: [PostgreSQL Join](https://www.postgresql.org/docs/current/tutorial-join.html)
 
 <!-- markdownlint-disable MD033 MD045 -->
-<img src="../../.imgs/joins.png" style="border-radius:15px;"/>
+<img src="../../../.imgs/joins.png" style="border-radius:15px;"/>
 
 ## 1. Cross Join
 
