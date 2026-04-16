@@ -7,7 +7,7 @@ import (
 )
 
 type User struct {
-	ID        int `gorm:"primary_key"`
+	ID        uint `gorm:"primary_key"`
 	Name      string
 	Status    string
 	CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP"`
@@ -17,7 +17,7 @@ func (u *User) TableName() string {
 	return "users"
 }
 
-func FakeUser(id int) *User {
+func FakeUser(id uint) *User {
 	return &User{
 		ID:     id,
 		Name:   gofakeit.Name(),
@@ -29,9 +29,9 @@ func FakeUser(id int) *User {
 	}
 }
 
-func FakeUsers(count int) []*User {
+func FakeUsers(count uint) []*User {
 	users := make([]*User, count)
-	for i := 0; i < count; i++ {
+	for i := uint(0); i < count; i++ {
 		users[i] = FakeUser(i + 1)
 	}
 	return users
