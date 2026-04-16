@@ -34,6 +34,6 @@ func (r *LocationRepository) SaveLocation(ctx context.Context, location *domain.
 	return nil
 }
 
-func (r *LocationRepository) GetLatestLocation(userID string) (*domain.Location, error) {
+func (r *LocationRepository) GetLatestLocation(ctx context.Context, userID string) (*domain.Location, error) {
 	return nil, nil
 }
