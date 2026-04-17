@@ -1,6 +1,7 @@
 package table
 
 import (
+	"generator/faker"
 	"time"
 
 	"github.com/brianvoe/gofakeit/v7"
@@ -11,6 +12,7 @@ type User struct {
 	Name      string
 	Status    string
 	CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP"`
+	UpdatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP"`
 }
 
 func (u *User) TableName() string {
@@ -19,13 +21,11 @@ func (u *User) TableName() string {
 
 func FakeUser(id uint) *User {
 	return &User{
-		ID:     id,
-		Name:   gofakeit.Name(),
-		Status: gofakeit.RandomString([]string{"active", "inactive", "pending"}),
-		CreatedAt: gofakeit.DateRange(
-			time.Now().AddDate(-3, 0, 0),
-			time.Now().AddDate(-1, 0, 0),
-		),
+		ID:        id,
+		Name:      gofakeit.Name(),
+		Status:    gofakeit.RandomString([]string{"active", "inactive", "pending"}),
+		CreatedAt: faker.PastDate(),
+		UpdatedAt: time.Now(),
 	}
 }
 
