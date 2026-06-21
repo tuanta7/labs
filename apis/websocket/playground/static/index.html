@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Test</title>
+   <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>WebSocket Client</h1>
+        <div id="status" class="disconnected">Disconnected</div>
+
+        <div class="controls">
+            <button id="connectBtn" onclick="connect()">Connect</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+        </div>
+
+        <h3>Messages</h3>
+        <div id="messages"></div>
+
+        <div class="input-group">
+            <label for="messageInput"></label>
+            <input type="text" id="messageInput" placeholder="Enter message..." disabled>
+            <button id="sendBtn" onclick="sendMessage()" disabled>Send</button>
+        </div>
+    </div>
+    <script src="ws.js"></script>
+</body>
+</html>

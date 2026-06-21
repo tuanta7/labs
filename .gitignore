@@ -1,0 +1,12 @@
+node_modules/
+.idea/
+.vscode/
+dist/
+build/
+coverage/
+logs/
+*.log
+*.env
+
+# Docker mounted volumes
+data/

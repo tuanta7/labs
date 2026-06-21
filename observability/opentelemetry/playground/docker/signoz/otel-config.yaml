@@ -1,0 +1,248 @@
+# =============================================================================
+# RECEIVERS
+# Receivers define how data gets into the collector. They listen for incoming
+# telemetry data (traces, metrics, logs) from your applications.
+# =============================================================================
+receivers:
+  # OTLP (OpenTelemetry Protocol) Receiver
+  # This is the standard way to receive telemetry from applications instrumented
+  # with OpenTelemetry SDKs. It supports both gRPC and HTTP protocols.
+  otlp:
+    protocols:
+      grpc:
+        # gRPC endpoint - applications send data here using gRPC protocol
+        # Port 4317 is the standard OTLP gRPC port
+        endpoint: 0.0.0.0:4317
+      http:
+        # HTTP endpoint - applications send data here using HTTP protocol
+        # Port 4318 is the standard OTLP HTTP port
+        endpoint: 0.0.0.0:4318
+
+  # Prometheus Receiver
+  # Scrapes metrics from Prometheus-compatible endpoints.
+  # Useful for collecting metrics from services that expose in Prometheus format.
+  prometheus:
+    config:
+      global:
+        # How often to scrape metrics from targets
+        scrape_interval: 60s
+      scrape_configs:
+        - job_name: otel-collector
+          static_configs:
+            - targets:
+                # Scrape the collector's own metrics (self-monitoring)
+                - localhost:8888
+              labels:
+                job_name: otel-collector
+
+# =============================================================================
+# CONNECTORS
+# Connectors act as both an exporter AND receiver. They connect two pipelines
+# together, consuming data as an exporter in one pipeline and emitting it as
+# a receiver in another.
+# =============================================================================
+connectors:
+  # SigNoz Meter Connector
+  # Takes telemetry data and generates usage metrics from it.
+  # This helps track how much telemetry is being processed.
+  signozmeter:
+    # How often to flush metering metrics
+    metrics_flush_interval: 1h
+    # Dimensions to include in the usage metrics
+    dimensions:
+      - name: service.name
+      - name: deployment.environment
+      - name: host.name
+
+# =============================================================================
+# PROCESSORS
+# Processors transform, filter, or enrich telemetry data as it passes through
+# the collector. They sit between receivers and exporters.
+# =============================================================================
+processors:
+  # Batch Processor
+  # Batches data before sending to exporters. This improves compression and
+  # reduces the number of outgoing connections. Essential for performance!
+  batch:
+    # Number of items to accumulate before sending
+    send_batch_size: 10000
+    # Maximum batch size (prevents memory issues)
+    send_batch_max_size: 11000
+    # Maximum time to wait before sending (even if the batch isn't full)
+    timeout: 10s
+
+  # Separate batch processor for metering data with different settings
+  batch/meter:
+    send_batch_max_size: 25000
+    send_batch_size: 20000
+    timeout: 1s
+
+  # Resource Detection Processor
+  # Automatically detects and adds resource attributes (like host info,
+  # cloud provider details, etc.) to your telemetry data.
+  resourcedetection:
+    # 'env' - reads from OTEL_RESOURCE_ATTRIBUTES environment variable
+    # 'system' - detects host.name, host.id, os.type, etc.
+    detectors: [env, system]
+    timeout: 2s
+
+  # SigNoz Span Metrics Processor (Delta Aggregation)
+  # Generates RED metrics (Rate, Errors, Duration) from trace spans.
+  # This creates metrics like request count, error rate, and latency histograms.
+  signozspanmetrics/delta:
+    # Where to send the generated metrics
+    metrics_exporter: signozclickhousemetrics
+    # How often to flush the generated metrics
+    metrics_flush_interval: 60s
+    # Histogram buckets for latency measurements (in various time units)
+    # Helps visualize latency distribution (p50, p90, p99, etc.)
+    latency_histogram_buckets: [100us, 1ms, 2ms, 6ms, 10ms, 50ms, 100ms, 250ms, 500ms, 1000ms, 1400ms, 2000ms, 5s, 10s, 20s, 40s, 60s ]
+    # Cache size for dimension combinations (memory vs. accuracy tradeoff)
+    dimensions_cache_size: 100000
+    # Delta = only send changes since the last export (more efficient)
+    # Cumulative = send total counts each time
+    aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
+    # Enable exponential histograms for better precision
+    enable_exp_histogram: true
+    # Additional dimensions to extract from spans and include in metrics
+    dimensions:
+      - name: service.namespace
+        default: default
+      - name: deployment.environment
+        default: default
+      # This is added to ensure the uniqueness of the time series
+      # Otherwise, identical time series produced by multiple replicas of
+      # collectors result in incorrect APM metrics
+      - name: signoz.collector.id
+      - name: service.version
+      - name: browser.platform
+      - name: browser.mobile
+      - name: k8s.cluster.name
+      - name: k8s.node.name
+      - name: k8s.namespace.name
+      - name: host.name
+      - name: host.type
+      - name: container.name
+
+# =============================================================================
+# EXTENSIONS
+# Extensions provide additional capabilities to the collector that are not
+# part of the data processing pipeline (health checks, profiling, etc.).
+# =============================================================================
+extensions:
+  # Health Check Extension
+  # Exposes a health check endpoint for liveness/readiness probes.
+  # Useful for Kubernetes deployments to check if the collector is healthy.
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+  # pprof Extension
+  # Exposes Go pprof profiling endpoints for debugging performance issues.
+  # Access at http://localhost:1777/debug/pprof/
+  pprof:
+    endpoint: 0.0.0.0:1777
+
+# =============================================================================
+# EXPORTERS
+# Exporters send data OUT of the collector to external destinations.
+# This is where your telemetry data goes after being processed.
+# =============================================================================
+exporters:
+  # ClickHouse Traces Exporter
+  # Sends trace/span data to ClickHouse database for storage.
+  # ClickHouse is a fast columnar database, great for analytics.
+  clickhousetraces:
+    # Connection string: tcp://host:port/database
+    datasource: tcp://default:password@clickhouse:9000/signoz_traces
+    # Group exceptions by type rather than message (reduces cardinality)
+    low_cardinal_exception_grouping: ${env:LOW_CARDINAL_EXCEPTION_GROUPING}
+    # Use newer, more efficient schema
+    use_new_schema: true
+
+  # SigNoz ClickHouse Metrics Exporter
+  # Sends metrics data to ClickHouse for storage.
+  signozclickhousemetrics:
+    dsn: tcp://default:password@clickhouse:9000/signoz_metrics
+
+  # ClickHouse Logs Exporter
+  # Sends log data to ClickHouse for storage.
+  clickhouselogsexporter:
+    dsn: tcp://default:password@clickhouse:9000/signoz_logs
+    # Timeout for write operations
+    timeout: 10s
+    use_new_schema: true
+
+  # SigNoz ClickHouse Meter Exporter
+  # Sends usage metering data to ClickHouse.
+  # This tracks how much telemetry each service is generating.
+  signozclickhousemeter:
+    dsn: tcp://default:password@clickhouse:9000/signoz_meter
+    timeout: 45s
+    sending_queue:
+      # Disable async sending queue (send synchronously)
+      enabled: false
+
+# =============================================================================
+# SERVICE
+# The service section ties everything together. It defines which extensions
+# are enabled and how data flows through pipelines (receiver -> processor -> exporter).
+# =============================================================================
+service:
+  # Telemetry settings for the collector itself (self-monitoring)
+  telemetry:
+    logs:
+      # Output collector logs in JSON format (better for log aggregation)
+      encoding: json
+
+  # Extensions to enable (defined above)
+  extensions:
+    - health_check
+    - pprof
+
+  # =============================================================================
+  # PIPELINES
+  # Pipelines define the data flow: Receivers -> Processors -> Exporters
+  # Each pipeline handles one type of telemetry (traces, metrics, or logs).
+  # You can have multiple pipelines of the same type with different configs.
+  # =============================================================================
+  pipelines:
+    # Traces Pipeline
+    # Flow: OTLP receiver -> span metrics processor + batch -> ClickHouse + meter
+    traces:
+      receivers: [otlp]
+      # signozspanmetrics/delta generates RED metrics from spans
+      # batch groups traces together for efficient export
+      processors: [signozspanmetrics/delta, batch]
+      # clickhousetraces stores the actual spans
+      # signozmeter tracks usage metrics
+      exporters: [clickhousetraces, signozmeter]
+
+    # Metrics Pipeline
+    # Flow: OTLP receiver -> batch -> ClickHouse + meter
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [signozclickhousemetrics, signozmeter]
+
+    # Prometheus Metrics Pipeline
+    # Separate pipeline for Prometheus-scraped metrics
+    # Useful when you have services exposing Prometheus format
+    metrics/prometheus:
+      receivers: [prometheus]
+      processors: [batch]
+      exporters: [signozclickhousemetrics, signozmeter]
+
+    # Logs Pipeline
+    # Flow: OTLP receiver -> batch -> ClickHouse + meter
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [clickhouselogsexporter, signozmeter]
+
+    # Meter Pipeline
+    # This pipeline handles the usage metrics generated by signozmeter connector
+    # The signozmeter acts as a receiver here (it's a connector!)
+    metrics/meter:
+      receivers: [signozmeter]
+      processors: [batch/meter]
+      exporters: [signozclickhousemeter]
