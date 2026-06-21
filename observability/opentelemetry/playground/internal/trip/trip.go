@@ -29,9 +29,3 @@ type Trip struct {
 	CreatedAt      time.Time `json:"createdAt"`
 	UpdatedAt      time.Time `json:"updatedAt"`
 }
-
-type Driver struct {
-	ID    string `json:"id" bson:"_id"`
-	Name  string `json:"name" bson:"name"`
-	Phone string `json:"phone" bson:"phone"`
-}
