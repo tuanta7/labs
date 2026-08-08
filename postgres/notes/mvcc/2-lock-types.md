@@ -11,6 +11,12 @@ Most PostgreSQL commands automatically acquire locks of appropriate modes to ens
 
 ## 2. Row-Level Locks
 
-## Appendix: Optimistic & Pessimistic Locking
+## 3. Application-Level Strategies
+
+### Optimistic Locks
 
 Optimistic locking is primarily managed within the application layer, though it relies on database support for concurrency control.
+
+### Pessimistic Locks
+
+### Distributed Locks

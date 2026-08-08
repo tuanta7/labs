@@ -1,7 +1,7 @@
 package table
 
 import (
-	"generator/faker"
+	"mockdb/faker"
 	"time"
 
 	"github.com/brianvoe/gofakeit/v7"

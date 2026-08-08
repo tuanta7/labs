@@ -1,4 +1,4 @@
-module generator
+module mockdb
 
 go 1.26.1
 

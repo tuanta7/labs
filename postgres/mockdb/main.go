@@ -1,7 +1,7 @@
 package main
 
 import (
-	"generator/table"
+	"mockdb/table"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
