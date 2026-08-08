@@ -149,5 +149,3 @@ ERROR:  could not serialize access due to read/write dependencies among transact
 ```
 
 If these transactions were not serializable, and one transaction inserted/updated a row that would affect the other's calculation, a non-serializable outcome could occur.
-
-#### Tuple Visibility
